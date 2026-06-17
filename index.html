@@ -89,8 +89,10 @@
 
   .count { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
 
-  /* cards grid */
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  /* cards grid — compact cards pack tight (2+ cols even on phones); detailed cards get more room */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  @media (min-width: 640px){ .grid { grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 10px; } }
+  body.detail-view .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
   .card {
     position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: var(--r);
     padding: 11px 12px 11px 13px; cursor: pointer; box-shadow: var(--shadow); transition: border-color .12s, transform .04s;
@@ -1014,6 +1016,7 @@ function refreshStrikeUI(){
 function setDetail(on){
   state.detail = !!on;
   localStorage.setItem(LS_DETAIL, state.detail ? '1' : '0');
+  document.body.classList.toggle('detail-view', state.detail);
   if (els.detailToggle) els.detailToggle.checked = state.detail;
   if (els.detailToggleAll) els.detailToggleAll.checked = state.detail;
   if (state.tab === 'search') runSearch();
@@ -1084,6 +1087,7 @@ els.galSort.addEventListener('change', renderGallery);
 
 /* ---------- init ---------- */
 function init(){
+  document.body.classList.toggle('detail-view', state.detail);
   els.detailToggle.checked = state.detail;
   els.detailToggleAll.checked = state.detail;
   [els.kanaToggle, els.kanaToggleAll, els.kanaToggleGal].forEach(c => { if (c) c.checked = state.kanaFirst; });
