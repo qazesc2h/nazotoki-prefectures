@@ -781,9 +781,10 @@ function sortList(list, mode, how){
   return arr;
 }
 
-/* wildcard → regex. * = any run, ? = exactly one. no wildcard => contains. */
+/* wildcard → regex. * = any run, ? = exactly one. no wildcard => contains.
+   full-width ＊ / ？ are treated the same as half-width * / ?. */
 function buildMatcher(qRaw){
-  const q = (qRaw || '').trim();
+  const q = (qRaw || '').trim().replace(/＊/g, '*').replace(/？/g, '?');
   if (!q) return null;
   const hasWild = /[*?]/.test(q);
   let esc = q.replace(/[.+^${}()|[\]\\]/g, '\\$&');
