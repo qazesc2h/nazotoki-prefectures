@@ -1284,7 +1284,7 @@ function graphValidateCharCount(n) {
 function graphCreateWord(index, charCount) {
   const letters = [];
   for (let s = 0; s < charCount; s++) {
-    letters.push({ cellId: index + '-' + s, char: '', source: 'user', smallOnly: false });
+    letters.push({ cellId: index + '-' + s, char: '', source: 'user', cellType: '' });
   }
   return { index: index, charCount: charCount, letters: letters };
 }
@@ -1547,6 +1547,8 @@ function graphLoadState() {
     graphState.looseSmallLarge = !!parsed.looseSmallLarge;
     /* 레거시 same_char_sl 규칙 → same_char 로 통합 */
     graphState.rules.forEach(function(r){ if (r.ruleType === 'same_char_sl') r.ruleType = 'same_char'; });
+    /* 레거시 smallOnly → cellType */
+    graphState.words.forEach(function(w){ w.letters.forEach(function(l){ if (l.cellType === undefined) l.cellType = l.smallOnly ? 'small' : ''; }); });
   } catch (e) { /* JSON 파싱 실패 무시 */ }
 }
 
@@ -1562,7 +1564,7 @@ function graphSaveState() {
             cellId: l.cellId,
             char: l.source === 'user' ? l.char : '',
             source: 'user',
-            smallOnly: !!l.smallOnly,
+            cellType: l.cellType || '',
           };
         }),
       };
@@ -1807,19 +1809,22 @@ function graphRenderCanvas() {
       cellRect.setAttribute('height', String(GRAPH_CELL_H));
       cellRect.setAttribute('rx', '6'); cellRect.setAttribute('ry', '6');
       cellRect.setAttribute('fill', 'var(--panel-2)');
-      cellRect.setAttribute('stroke', 'var(--border)');
-      cellRect.setAttribute('stroke-width', '1.5');
-      if (letter.smallOnly) cellRect.setAttribute('stroke-dasharray', '3 2');
+      var typeColor = letter.cellType === 'handakuten' ? '#db2777' : letter.cellType === 'dakuten' ? '#7c3aed' : letter.cellType === 'small' ? '#0ea5e9' : null;
+      cellRect.setAttribute('stroke', typeColor || 'var(--border)');
+      cellRect.setAttribute('stroke-width', typeColor ? '2' : '1.5');
+      if (letter.cellType) cellRect.setAttribute('stroke-dasharray', '3 2');
       cellG.appendChild(cellRect);
-      if (letter.smallOnly){
+      if (letter.cellType){
+        var badgeFont = Math.max(11, Math.round(GRAPH_CELL_H * 0.3));
         var sbadge = document.createElementNS(NS, 'text');
         sbadge.setAttribute('x', String(cx + GRAPH_CELL_W - 2));
-        sbadge.setAttribute('y', String(cy + GRAPH_CELL_H - 3));
+        sbadge.setAttribute('y', String(cy + badgeFont + 1));  /* 오른쪽 위 — 탁점/반탁점이 실제로 붙는 위치 */
         sbadge.setAttribute('text-anchor', 'end');
-        sbadge.setAttribute('font-size', String(GRAPH_SLOT_FONT));
-        sbadge.setAttribute('fill', '#0ea5e9');
+        sbadge.setAttribute('font-size', String(badgeFont));
+        sbadge.setAttribute('font-weight', '700');
+        sbadge.setAttribute('fill', typeColor);
         sbadge.setAttribute('pointer-events', 'none');
-        sbadge.textContent = '小';
+        sbadge.textContent = GRAPH_CELL_TYPE_BADGE[letter.cellType] || '';
         cellG.appendChild(sbadge);
       }
 
@@ -2017,7 +2022,7 @@ function graphUpdateWordListSlot(cellId, char) {
 function graphCommitCellChar(cellId, rawChar) {
   var ch = kataToHira((rawChar || '').trim()).slice(0, 1);
   var _l = graphFindLetter(cellId);
-  if (ch && _l && _l.smallOnly) ch = graphSmallForm(ch);  /* 작은 글자만 칸: 입력을 작은 글자로 변환 */
+  if (ch && _l && _l.cellType) ch = graphCellTypeConvert(ch, _l.cellType);  /* 칸 타입: 입력을 작은/탁점/반탁점 형태로 변환 */
   graphState.words = graphUpdateCellChar(graphState.words, cellId, ch, 'user');
   graphSaveState();
   /* 제약 엔진 재계산 후 파생값·충돌·규칙선 갱신 (편집기는 유지) */
@@ -2254,20 +2259,33 @@ function graphInitForm() {
    규칙 엔진 (AC2~4): 음운 판정 · 오십음도 · 제약 전파 · 검증
    ================================================================ */
 
-/* 오십음도 선형 시퀀스 — 기본 46자만 위치를 가진다 (탁/반탁/요/촉/장음 제외) */
+/* 오십음도 선형 시퀀스 (기본 청음 46자) */
 var GRAPH_GOJUON = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
-function gojuonNextChar(c){ var i = GRAPH_GOJUON.indexOf(c); return (i < 0 || i >= GRAPH_GOJUON.length - 1) ? null : GRAPH_GOJUON[i + 1]; }
-function gojuonPrevChar(c){ var i = GRAPH_GOJUON.indexOf(c); return (i <= 0) ? null : GRAPH_GOJUON[i - 1]; }
+/* 탁음·반탁음 행 — '다음 글자'는 같은 자음 행 안에서 あいうえお 순서로만 연결 (요·촉·장음·ん 은 위치 없음) */
+var GRAPH_GOJUON_VOICED = ['がぎぐげご', 'ざじずぜぞ', 'だぢづでど', 'ばびぶべぼ', 'ぱぴぷぺぽ'];
+function gojuonNextChar(c){ return seqStepChar(c, 'gojuon', 1); }
+function gojuonPrevChar(c){ return seqStepChar(c, 'gojuon', -1); }
 
 /* 이로하(いろは) 순서 (고전 47자) — '다음 글자' 규칙의 대체 순서 */
 var GRAPH_IROHA = 'いろはにほへとちりぬるをわかよたれそつねならむうゐのおくやまけふこえてあさきゆめみしゑひもせす';
 function graphSeqStr(order){ return order === 'iroha' ? GRAPH_IROHA : GRAPH_GOJUON; }
-/** 시퀀스(order)에서 ch 로부터 step 칸 떨어진 글자. 범위를 벗어나거나 시퀀스에 없으면 null. */
+/** 시퀀스(order)에서 ch 로부터 step 칸 떨어진 글자. 범위를 벗어나거나 시퀀스에 없으면 null.
+ *  gojuon: 청음은 선형(행을 넘어감), 탁음·반탁음은 같은 자음 행 안에서만 이동. */
 function seqStepChar(ch, order, step){
-  var s = graphSeqStr(order), i = s.indexOf(ch);
-  if (i < 0) return null;
-  var j = i + step;
-  return (j < 0 || j >= s.length) ? null : s[j];
+  if (order === 'gojuon'){
+    var i = GRAPH_GOJUON.indexOf(ch);
+    if (i >= 0){ var j = i + step; return (j < 0 || j >= GRAPH_GOJUON.length) ? null : GRAPH_GOJUON[j]; }
+    for (var r = 0; r < GRAPH_GOJUON_VOICED.length; r++){
+      var row = GRAPH_GOJUON_VOICED[r], k = row.indexOf(ch);
+      if (k >= 0){ var m = k + step; return (m < 0 || m >= row.length) ? null : row[m]; }
+    }
+    return null;
+  }
+  /* iroha (선형) */
+  var ii = GRAPH_IROHA.indexOf(ch);
+  if (ii < 0) return null;
+  var jj = ii + step;
+  return (jj < 0 || jj >= GRAPH_IROHA.length) ? null : GRAPH_IROHA[jj];
 }
 
 /** 전각 숫자(０-９)를 반각(0-9)으로 정규화 — 일본어 자판의 전각 숫자 입력 지원 */
@@ -2331,9 +2349,39 @@ function graphIsSmall(ch){ return Object.prototype.hasOwnProperty.call(GRAPH_SMA
 function graphBaseChar(ch){ return GRAPH_SMALL_TO_LARGE[ch] || ch; }   /* 작은→큰, 그 외 자기 자신 */
 function graphSmallForm(ch){ return GRAPH_LARGE_TO_SMALL[ch] || ch; }  /* 큰→작은, 그 외(작은 포함) 자기 자신 */
 
+/* 탁점/반탁점 매핑 (청음 ⇄ 탁음/반탁음) */
+var GRAPH_DAKUTEN = { 'か':'が','き':'ぎ','く':'ぐ','け':'げ','こ':'ご','さ':'ざ','し':'じ','す':'ず','せ':'ぜ','そ':'ぞ','た':'だ','ち':'ぢ','つ':'づ','て':'で','と':'ど','は':'ば','ひ':'び','ふ':'ぶ','へ':'べ','ほ':'ぼ','う':'ゔ' };
+var GRAPH_HANDAKUTEN = { 'は':'ぱ','ひ':'ぴ','ふ':'ぷ','へ':'ぺ','ほ':'ぽ' };
+var GRAPH_DAKUTEN_REV = (function(){ var m = {}; for (var k in GRAPH_DAKUTEN) m[GRAPH_DAKUTEN[k]] = k; return m; })();
+var GRAPH_HANDAKUTEN_REV = (function(){ var m = {}; for (var k in GRAPH_HANDAKUTEN) m[GRAPH_HANDAKUTEN[k]] = k; return m; })();
+function graphIsDakuten(ch){ return Object.prototype.hasOwnProperty.call(GRAPH_DAKUTEN_REV, ch); }
+function graphIsHandakuten(ch){ return Object.prototype.hasOwnProperty.call(GRAPH_HANDAKUTEN_REV, ch); }
+function graphStripDiacritic(ch){ return GRAPH_DAKUTEN_REV[ch] || GRAPH_HANDAKUTEN_REV[ch] || ch; }  /* 탁/반탁 → 청음 */
+function graphAddDakuten(ch){ var b = graphStripDiacritic(ch); return GRAPH_DAKUTEN[b] || b; }        /* 청음 → 탁음 */
+function graphAddHandakuten(ch){ var b = graphStripDiacritic(ch); return GRAPH_HANDAKUTEN[b] || b; }  /* 청음 → 반탁음 */
+
+/* 칸 타입(cellType): '' 일반 / small 작은글자 / dakuten 탁점 / handakuten 반탁점 */
+var GRAPH_CELL_TYPE_LABEL = { '': '일반 칸', 'small': '작은 글자만 (ぁぃゃっ…)', 'dakuten': '탁점만 (がざだば…)', 'handakuten': '반탁점만 (ぱぴぷぺぽ)' };
+var GRAPH_CELL_TYPE_BADGE = { 'small': '小', 'dakuten': '濁', 'handakuten': '半' };
+function graphCellTypeConvert(ch, type){
+  if (!ch || !type) return ch;
+  if (type === 'small') return graphSmallForm(ch);
+  if (type === 'dakuten') return graphAddDakuten(ch);
+  if (type === 'handakuten') return graphAddHandakuten(ch);
+  return ch;
+}
+function graphCellTypeOk(ch, type){
+  if (!ch || !type) return true;
+  if (type === 'small') return graphIsSmall(ch);
+  if (type === 'dakuten') return graphIsDakuten(ch);
+  if (type === 'handakuten') return graphIsHandakuten(ch);
+  return true;
+}
+
 /* 규칙 종류 정의: 라벨 · 색 · 부류(값 생성/검증) · 방향성 */
 var GRAPH_RULE_DEFS = {
-  same_char:      { label: '같은 글자',         color: '#2563eb', ruleClass: 'derivation', directed: false },
+  same_char:         { label: '같은 글자',           color: '#2563eb', ruleClass: 'derivation', directed: false },
+  same_char_dakuten: { label: '같은 글자 (탁점 떼기)', color: '#0891b2', ruleClass: 'derivation', directed: false },
   same_vowel:     { label: '모음 같음',         color: '#16a34a', ruleClass: 'validation', directed: false },
   same_consonant: { label: '자음 같음',         color: '#9333ea', ruleClass: 'validation', directed: false },
   gojuon_next:    { label: '다음 글자',          color: '#ea580c', colorIroha: '#0d9488', ruleClass: 'derivation', directed: true },
@@ -2373,41 +2421,32 @@ function graphComputeEngine(){
   });
 
   /* 셀별 '작은 글자만' 속성 */
-  var cellSmallOnly = {};
-  graphState.words.forEach(function(w){ w.letters.forEach(function(l){ cellSmallOnly[l.cellId] = !!l.smallOnly; }); });
+  var cellType = {};
+  graphState.words.forEach(function(w){ w.letters.forEach(function(l){ cellType[l.cellId] = l.cellType || ''; }); });
 
   /* 전역 옵션: 작은⇄큰 같은 글자로 취급(켬) vs 엄격(정확히 동일, 끔) */
   var loose = !!graphState.looseSmallLarge;
-  function graphKey(ch){ return loose ? graphBaseChar(ch) : ch; }
+  function graphKey(ch){ return loose ? graphBaseChar(ch) : ch; }                              /* '같은 글자' 비교 키 (작은⇄큰만 정규화) */
+  function stripKey(ch){ var b = graphStripDiacritic(ch); return loose ? graphBaseChar(b) : b; } /* '탁점 떼기' 비교 키 (청음 베이스) */
 
-  /* --- 같은 글자 동치 그룹 (union-find) --- */
+  /* --- 같은 글자(정확) 동치 그룹 (union-find) — 탁점 떼기는 그룹에 넣지 않음 --- */
   var parent = {}; allCells.forEach(function(c){ parent[c] = c; });
   function find(x){ while (parent[x] !== x){ parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
   function union(a, b){ var ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; }
   rules.forEach(function(r){ if (r.ruleType === 'same_char') union(r.sourceCell, r.targetCell); });
 
-  /* 그룹별 사용자값의 키 모으기 (엄격=글자 그대로 / 작은⇄큰=기준 글자) */
-  var groupKeys = {};
-  allCells.forEach(function(c){
-    if (userChar[c]){ var root = find(c); (groupKeys[root] = groupKeys[root] || {})[graphKey(userChar[c])] = true; }
-  });
-  /* 전파(채움) 또는 충돌 표시 */
-  allCells.forEach(function(c){
-    var root = find(c), gk = groupKeys[root];
-    if (!gk) return;
-    var keys = Object.keys(gk);
-    if (keys.length > 1){
-      if (userChar[c]) conflict[c] = true;        /* 같은 그룹인데 글자가 다름 → 빨강 */
-    } else if (!userChar[c]){
-      var k = keys[0];
-      value[c] = cellSmallOnly[c] ? graphSmallForm(graphBaseChar(k)) : k;  /* 작은 글자만 칸이면 작은 형태로 */
-      st[c] = 'inferred';
-    }
-  });
-
-  /* --- gojuon_next 파생 (종료 보장 고정점 전파) --- */
-  for (var iter = 0; iter < 40; iter++){
+  /* --- 추론 고정점 전파: 정확 동치 그룹 + 다음 글자 + 탁점 떼기 (선별로 의미가 다르므로 매 반복 재평가) --- */
+  for (var iter = 0; iter < 60; iter++){
     var changed = false;
+    /* (a) 정확 same_char 그룹: 그룹에 값이 하나라도 있으면 빈 칸을 그 키로 채움 */
+    var gKeys = {};
+    allCells.forEach(function(c){ if (value[c] !== undefined){ var root = find(c); (gKeys[root] = gKeys[root] || {})[graphKey(value[c])] = true; } });
+    allCells.forEach(function(c){
+      if (value[c] !== undefined) return;
+      var gk = gKeys[find(c)], ks = gk && Object.keys(gk);
+      if (ks && ks.length === 1){ value[c] = graphCellTypeConvert(ks[0], cellType[c]); st[c] = 'inferred'; changed = true; }
+    });
+    /* (b) 다음 글자(gojuon/iroha) 양방향 */
     rules.forEach(function(r){
       if (r.ruleType !== 'gojuon_next') return;
       var s = r.sourceCell, t = r.targetCell;
@@ -2419,15 +2458,32 @@ function graphComputeEngine(){
         if (pv !== null){ value[s] = pv; if (st[s] !== 'user') st[s] = 'inferred'; changed = true; }
       }
     });
+    /* (c) 탁점 떼기: 청음 베이스가 같음 — 빈 칸을 베이스(칸 타입 반영)로 채움 */
+    rules.forEach(function(r){
+      if (r.ruleType !== 'same_char_dakuten') return;
+      var s = r.sourceCell, t = r.targetCell;
+      if (value[s] !== undefined && value[t] === undefined){
+        value[t] = graphCellTypeConvert(stripKey(value[s]), cellType[t]); if (st[t] !== 'user') st[t] = 'inferred'; changed = true;
+      } else if (value[t] !== undefined && value[s] === undefined){
+        value[s] = graphCellTypeConvert(stripKey(value[t]), cellType[s]); if (st[s] !== 'user') st[s] = 'inferred'; changed = true;
+      }
+    });
     if (!changed) break;
   }
+
+  /* 정확 same_char 그룹에 서로 다른 키가 섞이면 충돌(빨강) */
+  var gKeys2 = {};
+  allCells.forEach(function(c){ if (value[c] !== undefined){ var root = find(c); (gKeys2[root] = gKeys2[root] || {})[graphKey(value[c])] = true; } });
+  allCells.forEach(function(c){ var gk = gKeys2[find(c)]; if (value[c] !== undefined && gk && Object.keys(gk).length > 1) conflict[c] = true; });
 
   /* --- 검증 패스 --- */
   rules.forEach(function(r){
     var s = r.sourceCell, t = r.targetCell, vs = value[s], vt = value[t];
     if (vs === undefined || vt === undefined) return;
     if (r.ruleType === 'same_char'){
-      if (loose ? graphBaseChar(vs) !== graphBaseChar(vt) : vs !== vt) ruleViol[r._idx] = true;
+      if (graphKey(vs) !== graphKey(vt)) ruleViol[r._idx] = true;
+    } else if (r.ruleType === 'same_char_dakuten'){
+      if (stripKey(vs) !== stripKey(vt)) ruleViol[r._idx] = true;
     } else if (r.ruleType === 'same_vowel'){
       var a = graphPhoneme(vs), b = graphPhoneme(vt);
       if (a.vowel !== null && b.vowel !== null && a.vowel !== b.vowel) ruleViol[r._idx] = true;
@@ -2442,7 +2498,7 @@ function graphComputeEngine(){
 
   /* '작은 글자만' 칸에 작은 글자가 아닌 값 → 충돌(빨강) */
   allCells.forEach(function(c){
-    if (cellSmallOnly[c] && value[c] && !graphIsSmall(value[c])) conflict[c] = true;
+    if (cellType[c] && value[c] && !graphCellTypeOk(value[c], cellType[c])) conflict[c] = true;
   });
 
   graphEngine = { value: value, state: st, conflict: conflict, ruleViol: ruleViol };
@@ -2542,6 +2598,7 @@ function graphRenderEdges(){
     ln.setAttribute('stroke-width', graphSelectedRuleIdx === ri ? '4' : '2.5');
     ln.setAttribute('stroke-linecap', 'round');
     if (viol) ln.setAttribute('stroke-dasharray', '6 4');
+    else if (r.ruleType === 'same_char_dakuten') ln.setAttribute('stroke-dasharray', '5 3'); /* 탁점 떼기: 점선 */
     else if (r.ruleType === 'same_char' && graphState.looseSmallLarge) ln.setAttribute('stroke-dasharray', '5 3'); /* 작은⇄큰 모드: 점선 */
     ln.setAttribute('pointer-events', 'none');
     if (def.directed) ln.setAttribute('marker-end', 'url(#graph-arrow-' + col.replace('#', '') + ')');
@@ -2689,7 +2746,7 @@ function graphOpenRuleMenu(sourceCell, targetCell, clientX, clientY){
   title.textContent = sourceCell + ' → ' + targetCell;
   menu.appendChild(title);
   /* 단순 규칙 3종 (한 번 클릭) */
-  ['same_char', 'same_vowel', 'same_consonant'].forEach(function(rt){
+  ['same_char', 'same_char_dakuten', 'same_vowel', 'same_consonant'].forEach(function(rt){
     var def = GRAPH_RULE_DEFS[rt];
     var btn = document.createElement('button');
     btn.type = 'button';
@@ -2759,13 +2816,13 @@ function graphCloseRuleMenu(){ var m = document.getElementById('graph-rule-menu'
    셀 컨텍스트 메뉴 ('작은 글자만' 칸 토글) — 우클릭 / 길게 누르기
    ---------------------------------------------------------------- */
 function graphCloseCellMenu(){ var m = document.getElementById('graph-cell-menu'); if (m) m.style.display = 'none'; }
-function graphToggleSmallOnly(cellId){
+function graphSetCellType(cellId, type){
   graphState.words = graphState.words.map(function(w){
     return { index: w.index, charCount: w.charCount, letters: w.letters.map(function(l){
       if (l.cellId !== cellId) return l;
-      var on = !l.smallOnly;
-      var nl = Object.assign({}, l, { smallOnly: on });
-      if (on && nl.char) nl.char = graphSmallForm(nl.char);  /* 켤 때 기존 글자를 작은 형태로 변환 */
+      var nl = Object.assign({}, l, { cellType: type });
+      delete nl.smallOnly;  /* 레거시 필드 제거 */
+      if (type && nl.char) nl.char = graphCellTypeConvert(nl.char, type);  /* 타입 지정 시 기존 글자를 해당 형태로 변환 */
       return nl;
     }) };
   });
@@ -2782,11 +2839,14 @@ function graphOpenCellMenu(cellId, clientX, clientY){
   title.style.cssText = 'font-size:11px; color:var(--muted); padding:2px 8px 6px';
   title.textContent = '칸 ' + cellId;
   menu.appendChild(title);
-  var toggle = document.createElement('button');
-  toggle.type = 'button'; toggle.className = 'graph-rule-menu-item';
-  toggle.innerHTML = (letter.smallOnly ? '☑' : '☐') + ' 작은 글자만 칸 (ぁぃぅゃっ…)';
-  toggle.addEventListener('click', function(){ graphToggleSmallOnly(cellId); graphCloseCellMenu(); });
-  menu.appendChild(toggle);
+  [['', '일반 칸'], ['small', '작은 글자만 (ぁぃゃっ…)'], ['dakuten', '탁점만 (がざだば…)'], ['handakuten', '반탁점만 (ぱぴぷぺぽ)']].forEach(function(opt){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'graph-rule-menu-item';
+    var cur = (letter.cellType || '') === opt[0];
+    b.innerHTML = (cur ? '◉' : '○') + ' ' + opt[1];
+    b.addEventListener('click', function(){ graphSetCellType(cellId, opt[0]); graphCloseCellMenu(); });
+    menu.appendChild(b);
+  });
   var cancel = document.createElement('button');
   cancel.type = 'button'; cancel.className = 'graph-rule-menu-item'; cancel.style.color = 'var(--muted)';
   cancel.textContent = '취소';
@@ -2805,6 +2865,7 @@ function graphOpenCellMenu(cellId, clientX, clientY){
 function graphRuleLabel(r){
   if (!r) return '';
   if (r.ruleType === 'same_char') return graphState.looseSmallLarge ? '같은 글자 (작은⇄큰)' : '같은 글자';
+  if (r.ruleType === 'same_char_dakuten') return '같은 글자 (탁점 떼기)' + (graphState.looseSmallLarge ? ' +작은⇄큰' : '');
   if (r.ruleType === 'same_vowel') return '모음 같음';
   if (r.ruleType === 'same_consonant') return '자음 같음';
   if (r.ruleType === 'gojuon_next') return (r.order === 'iroha' ? '이로하' : '오십음도') + ' 다음' + ((r.step || 1) > 1 ? ' +' + r.step : '');
@@ -2826,12 +2887,15 @@ function graphRenderLegend(){
   var loose = !!graphState.looseSmallLarge;
   el.innerHTML =
     item(lineSwatch('#2563eb', loose, false), '같은 글자' + (loose ? ' (작은⇄큰)' : '')) +
+    item(lineSwatch('#0891b2', true, false), '같은 글자 (탁점 떼기)') +
     item(lineSwatch('#16a34a', false, false), '모음 같음') +
     item(lineSwatch('#9333ea', false, false), '자음 같음') +
     item(lineSwatch('#ea580c', false, true), '오십음도 다음') +
     item(lineSwatch('#0d9488', false, true), '이로하 다음') +
     item(lineSwatch('#ef4444', true, false), '규칙 위반') +
-    item('<span style="display:inline-block; width:18px; height:13px; border:1.5px dashed #0ea5e9; border-radius:3px"></span>', '작은 글자만 칸 (小)');
+    item('<span style="display:inline-block; width:16px; height:12px; border:1.5px dashed #0ea5e9; border-radius:3px"></span>', '작은 칸 小') +
+    item('<span style="display:inline-block; width:16px; height:12px; border:1.5px dashed #7c3aed; border-radius:3px"></span>', '탁점 칸 濁') +
+    item('<span style="display:inline-block; width:16px; height:12px; border:1.5px dashed #db2777; border-radius:3px"></span>', '반탁점 칸 半');
 }
 
 function graphSelectRule(ri, clientX, clientY){
