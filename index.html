@@ -50,6 +50,26 @@
 
   /* segmented toggles */
   .seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px; gap: 2px; }
+  /* 모드 선택: 데스크톱은 알약 세그먼트, 좁은 화면은 햄버거 드롭다운 (버튼 4개 가로 넘침 방지) */
+  .mode-switch { position: relative; display: inline-flex; }
+  .mode-toggle { display: none; }   /* 데스크톱에서는 숨김 */
+  .mode-toggle .mode-toggle-icon { font-size: 14px; line-height: 1; color: var(--muted); }
+  @media (max-width: 480px) {
+    .mode-toggle {
+      display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+      font: inherit; font-size: 13px; font-weight: 600; color: var(--text);
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px;
+      padding: 7px 14px; box-shadow: var(--shadow);
+    }
+    .mode-switch.open .mode-toggle { border-color: var(--accent); }
+    .seg {
+      display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+      flex-direction: column; align-items: stretch; gap: 3px;
+      min-width: 172px; border-radius: 12px; padding: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.24);
+    }
+    .mode-switch.open .seg { display: flex; }
+    .seg button { width: 100%; text-align: left; padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+  }
   .seg button {
     font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--muted);
     padding: 6px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap;
@@ -66,7 +86,9 @@
   .btn:disabled { opacity: .45; cursor: default; }
 
   /* tabs */
-  nav.tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--border); margin: 6px 0 16px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+  /* overflow-x:auto 는 overflow-y 를 auto 로 만들어, 버튼의 margin-bottom:-2px 때문에
+     윈도우(비-오버레이 스크롤바)에서 2px짜리 불필요한 세로 스크롤바가 생긴다 → overflow-y:hidden 으로 고정 */
+  nav.tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--border); margin: 6px 0 16px; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
   nav.tabs button {
     font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--muted);
     padding: 9px 12px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; font-weight: 600;
@@ -288,6 +310,43 @@
     box-shadow: 0 4px 18px rgba(0,0,0,.28); padding: 6px;
   }
   #graph-edge-label { font-size: 12px; color: var(--text); padding: 2px 4px 0; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+
+  /* ========== ババ抜き (바바누키) 탭 ========== */
+  .baba-result { padding: 16px; margin-bottom: 14px; }
+  .baba-result-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .baba-result-title { font-size: 13px; font-weight: 700; color: var(--muted); }
+  .baba-surv-count { font-size: 12px; color: var(--muted); }
+  .baba-answer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 48px; }
+  .baba-empty { color: var(--muted); font-size: 13px; }
+  .baba-keepchip {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 40px; height: 48px; padding: 0 9px;
+    font-size: 27px; font-weight: 800; font-family: var(--jp); letter-spacing: .02em;
+    background: var(--accent-soft); color: var(--text);
+    border: 2px solid var(--accent); border-radius: 9px;
+  }
+
+  .baba-list-head { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+  .baba-list-head .count { margin: 0; }
+  #baba-list { padding: 2px 14px; }
+  #baba-list .empty { padding: 22px; }
+  .baba-word { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .baba-word:last-child { border-bottom: 0; }
+  .baba-wlabel { font-size: 12px; font-weight: 700; color: var(--muted); min-width: 30px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .baba-tiles { display: flex; flex-wrap: wrap; gap: 5px; flex: 1 1 auto; }
+  .baba-tile {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border: 1.5px solid var(--border); border-radius: 7px;
+    background: var(--panel-2); font-size: 20px; font-family: var(--jp); color: var(--text);
+  }
+  .baba-tile.keep { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+  .baba-tile.struck { color: var(--struck-text); border-color: var(--struck); background: var(--panel-2); opacity: .65; text-decoration: line-through; text-decoration-color: var(--struck-text); }
+  .baba-del {
+    font: inherit; font-size: 16px; line-height: 1; color: var(--muted);
+    border: 1px solid var(--border); background: var(--panel); border-radius: 6px;
+    width: 28px; height: 28px; cursor: pointer; flex-shrink: 0;
+  }
+  .baba-del:hover { border-color: var(--accent); color: var(--text); }
 </style>
 </head>
 <body>
@@ -295,10 +354,17 @@
   <header class="app">
     <h1>나조토키 도우미</h1>
     <div class="spacer"></div>
-    <div class="seg" id="modeSeg" role="tablist" aria-label="모드">
-      <button data-mode="pref" class="on">도도부현</button>
-      <button data-mode="cap">현청소재지</button>
-      <button data-view="graph">규칙 그래프</button>
+    <div class="mode-switch" id="modeSwitch">
+      <button class="mode-toggle" id="modeToggle" type="button" aria-haspopup="true" aria-expanded="false" aria-label="도구 선택">
+        <span id="modeToggleLabel">도도부현</span>
+        <span class="mode-toggle-icon" aria-hidden="true">☰</span>
+      </button>
+      <div class="seg" id="modeSeg" role="tablist" aria-label="모드">
+        <button data-mode="pref" class="on">도도부현</button>
+        <button data-mode="cap">현청소재지</button>
+        <button data-view="graph">규칙 그래프</button>
+        <button data-view="babanuki">바바누키</button>
+      </div>
     </div>
     <div class="strike-status hidden" id="strikeStatus">
       <span id="strikeCount"></span>
@@ -427,6 +493,49 @@
       </div>
       <div id="graph-word-list"></div>
     </div>
+  </section>
+
+  <!-- BABANUKI TAB (ババ抜き) -->
+  <section id="tab-babanuki" class="hidden">
+    <div class="panel controls">
+      <div class="field grow">
+        <label for="baba-input">단어 입력</label>
+        <input type="text" id="baba-input" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="예: たぬき (엔터 또는 「추가」). 여러 단어는 띄어쓰기·쉼표로 한 번에" />
+        <p class="hint">엔터 또는 <code>＋추가</code>로 단어를 더합니다. 모든 단어의 글자를 모아 <b>겹치는 글자를 지우고</b> 남는 글자를 읽습니다.</p>
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <button class="btn" id="baba-add" type="button">＋ 추가</button>
+      </div>
+      <div class="field">
+        <label for="baba-rule">겹침 규칙</label>
+        <select id="baba-rule">
+          <option value="pair">짝만 지우기 (홀수는 1개 남김)</option>
+          <option value="all">겹치면 모두 지우기</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>글자 맞추기</label>
+        <label class="checkbox"><input type="checkbox" id="baba-opt-kata" /> カ=か (가나 통일)</label>
+        <label class="checkbox"><input type="checkbox" id="baba-opt-small" /> 작은⇄큰 같은 글자</label>
+        <label class="checkbox"><input type="checkbox" id="baba-opt-dia" /> 탁점·반탁점 무시</label>
+      </div>
+    </div>
+
+    <div class="panel baba-result">
+      <div class="baba-result-head">
+        <span class="baba-result-title">남은 글자</span>
+        <span class="baba-surv-count" id="baba-surv-count"></span>
+      </div>
+      <div class="baba-answer" id="baba-answer"></div>
+    </div>
+
+    <div class="baba-list-head">
+      <span class="count" id="baba-word-count"></span>
+      <div class="spacer"></div>
+      <button class="btn" id="baba-clear" type="button">목록 비우기</button>
+    </div>
+    <div class="panel" id="baba-list"></div>
   </section>
 
   <footer class="app">
@@ -821,6 +930,7 @@ function toggleStruck(code){
 const $ = sel => document.querySelector(sel);
 const els = {
   modeSeg: $('#modeSeg'), tabs: $('#tabs'),
+  modeSwitch: $('#modeSwitch'), modeToggle: $('#modeToggle'), modeToggleLabel: $('#modeToggleLabel'),
   strikeStatus: $('#strikeStatus'), strikeCount: $('#strikeCount'), resetStrike: $('#resetStrike'),
   q: $('#q'), qScope: $('#qScope'), field: $('#field'), lenFilter: $('#lenFilter'), sortSearch: $('#sortSearch'),
   detailToggle: $('#detailToggle'), detailToggleAll: $('#detailToggleAll'),
@@ -832,7 +942,7 @@ const els = {
   tooltip: $('#tooltip'),
   sections: {
     search: $('#tab-search'), all: $('#tab-all'), map: $('#tab-map'), shapes: $('#tab-shapes'),
-    graph: $('#tab-graph'),
+    graph: $('#tab-graph'), babanuki: $('#tab-babanuki'),
   },
 };
 
@@ -1196,6 +1306,7 @@ function renderActiveTab(){
   else if (state.tab === 'map'){ if (!mapBuilt) buildMap(); else { updateMapLabels(); applyStruckToMap(); } }
   else if (state.tab === 'shapes') renderGallery();
   else if (state.tab === 'graph') graphRender();
+  else if (state.tab === 'babanuki') babaRender();
 }
 /* re-render everything that's currently relevant after a strike change */
 function renderAll(){
@@ -1205,24 +1316,37 @@ function renderAll(){
 }
 
 /* ---------- tab + mode wiring ---------- */
+/* 모바일 햄버거 토글: 현재 선택(.on 버튼) 라벨을 토글 버튼에 반영 */
+function syncModeToggleLabel(){
+  const on = els.modeSeg.querySelector('button.on');
+  if (on && els.modeToggleLabel) els.modeToggleLabel.textContent = on.textContent;
+}
+function closeModeMenu(){
+  if (!els.modeSwitch) return;
+  els.modeSwitch.classList.remove('open');
+  if (els.modeToggle) els.modeToggle.setAttribute('aria-expanded', 'false');
+}
+
 function setTab(tab){
   state.tab = tab;
-  const isGraph = (tab === 'graph');
-  /* 규칙 그래프는 상단 토글 레벨 — 콘텐츠 탭 줄을 숨기고 그래프 도구만 전체 표시 */
-  els.tabs.classList.toggle('hidden', isGraph);
+  /* 규칙 그래프·ババ抜き 는 상단 토글 레벨 도구 뷰 — 콘텐츠 탭 줄을 숨기고 도구만 전체 표시 */
+  const isView = (tab === 'graph' || tab === 'babanuki');
+  els.tabs.classList.toggle('hidden', isView);
   els.tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   Object.entries(els.sections).forEach(([k, sec]) => sec.classList.toggle('hidden', k !== tab));
-  /* 상단 토글 활성 상태: 규칙 그래프 vs 도도부현/현청소재지 */
+  /* 상단 토글 활성 상태: 도구 뷰(graph/babanuki) vs 도도부현/현청소재지 */
   els.modeSeg.querySelectorAll('button').forEach(b => {
-    if (b.dataset.view === 'graph') b.classList.toggle('on', isGraph);
-    else b.classList.toggle('on', !isGraph && b.dataset.mode === state.mode);
+    if (b.dataset.view) b.classList.toggle('on', b.dataset.view === tab);
+    else b.classList.toggle('on', !isView && b.dataset.mode === state.mode);
   });
+  syncModeToggleLabel();
   renderActiveTab();
 }
 function setMode(mode){
   state.mode = mode;
   localStorage.setItem(LS_MODE, mode);
   els.modeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+  syncModeToggleLabel();
   rebuildLenFilter();
   renderActiveTab();
   // keep other prebuilt views in sync with mode
@@ -1231,10 +1355,20 @@ function setMode(mode){
 
 els.modeSeg.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.view === 'graph') { setTab('graph'); return; }
-  if (state.tab === 'graph') setTab('search');  /* 그래프 뷰에서 데이터 모드 선택 시 검색 도구로 복귀 */
+  closeModeMenu();   /* 모바일: 항목 선택 시 드롭다운 닫기 */
+  if (b.dataset.view) { setTab(b.dataset.view); return; }
+  if (state.tab === 'graph' || state.tab === 'babanuki') setTab('search');  /* 도구 뷰에서 데이터 모드 선택 시 검색 도구로 복귀 */
   setMode(b.dataset.mode);
 });
+/* 햄버거 토글 열기/닫기 + 바깥 클릭·Esc 로 닫기 */
+els.modeToggle.addEventListener('click', () => {
+  const open = els.modeSwitch.classList.toggle('open');
+  els.modeToggle.setAttribute('aria-expanded', String(open));
+});
+document.addEventListener('click', e => {
+  if (els.modeSwitch && !els.modeSwitch.contains(e.target)) closeModeMenu();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModeMenu(); });
 els.tabs.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTab(b.dataset.tab); });
 els.resetStrike.addEventListener('click', () => { state.struck.clear(); saveStruck(); refreshStrikeUI(); renderAll(); });
 els.q.addEventListener('input', runSearch);
@@ -2996,6 +3130,213 @@ function graphInit() {
   });
 }
 
+/* ========================================================================
+   ババ抜き (바바누키) 탭
+   여러 단어의 글자를 한데 모아 "겹치는 글자"를 지우고 남는 글자를 읽는 퍼즐 도우미.
+   ======================================================================== */
+const LS_BABA = 'nazotoki-babanuki-v1';
+
+let babaState = {
+  words: [],              /* string[] — 입력된 단어 목록(표시는 원문 그대로) */
+  rule: 'pair',           /* 'pair' = 짝만 지움(홀수면 1개 남음, 기본) | 'all' = 겹치면 모두 지움 */
+  kataAsHira: true,       /* カ=か 로 취급해 매칭 (가타카나↔히라가나 통일) */
+  smallAsLarge: false,    /* ぁ=あ, っ=つ … 작은 글자⇄큰 글자 같은 글자 취급 */
+  ignoreDiacritic: false, /* が=か, ぱ=は … 탁점·반탁점 무시 */
+};
+
+function babaLoadState(){
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_BABA) || 'null');
+    if (raw && typeof raw === 'object') {
+      if (Array.isArray(raw.words)) babaState.words = raw.words.filter(w => typeof w === 'string');
+      if (raw.rule === 'pair' || raw.rule === 'all') babaState.rule = raw.rule;
+      if (typeof raw.kataAsHira === 'boolean') babaState.kataAsHira = raw.kataAsHira;
+      if (typeof raw.smallAsLarge === 'boolean') babaState.smallAsLarge = raw.smallAsLarge;
+      if (typeof raw.ignoreDiacritic === 'boolean') babaState.ignoreDiacritic = raw.ignoreDiacritic;
+    }
+  } catch(e){}
+}
+function babaSaveState(){
+  try { localStorage.setItem(LS_BABA, JSON.stringify(babaState)); } catch(e){}
+}
+
+/* ----- 순수 함수 레이어 (DOM 비의존) ----- */
+
+/* 한 글자를 비교용 키로 정규화. 표시는 원문 그대로 두고, 매칭에만 옵션을 적용한다. */
+function babaKey(ch, opts){
+  let k = ch;
+  /* 탁점·소문자 매핑(graph*)은 히라가나 키만 가지므로, 두 옵션 중 하나라도 켜져 있으면
+     먼저 히라가나로 바꿔서 처리해야 가타카나(ガ·ッ 등)에도 정규화가 적용된다.
+     단 'カ=か'(kataAsHira)가 꺼져 있으면 가나 구분은 유지해야 하므로 원래 가타카나였는지 기억해 둔다. */
+  const foldKana = opts.kataAsHira || opts.ignoreDiacritic || opts.smallAsLarge;
+  let wasKata = false;
+  if (foldKana) {
+    const h = kataToHira(k);
+    wasKata = (h !== k);                                  /* 변환됐으면 원래 가타카나(ァ-ヶ) */
+    k = h;                                                /* カ→か */
+  }
+  if (opts.ignoreDiacritic) k = graphStripDiacritic(k);   /* が→か, ぱ→は */
+  if (opts.smallAsLarge) k = graphBaseChar(k);            /* ぁ→あ, っ→つ */
+  if (wasKata && !opts.kataAsHira) k = '' + k;      /* 가나 통일 끔 → 가타카나는 히라가나와 다른 글자로 구분 */
+  return k;
+}
+
+/* 단어를 코드포인트 글자 배열로 분해 (공백류 제외) */
+function babaChars(word){
+  return Array.from(word || '').filter(c => !/\s/.test(c));
+}
+
+/*
+ * 단어 목록 → 각 글자의 남음/지워짐 상태 계산.
+ * 모든 단어의 글자를 하나의 풀로 모아 키별 개수를 세고:
+ *  - rule 'pair': 개수가 홀수면 첫 등장 1개만 남기고 나머지·짝수는 모두 지움.
+ *  - rule 'all' : 개수가 1이면 남기고, 2개 이상이면 모두 지움.
+ * @returns {{words: Array<Array<{ch,key,keep}>>, survivors: Array<{ch}>, counts: Map}}
+ */
+function babaCompute(words, opts){
+  const instances = [];
+  const perWord = words.map((w, wi) => babaChars(w).map((ch, ci) => {
+    const inst = { wi, ci, ch, key: babaKey(ch, opts), keep: false };
+    instances.push(inst);
+    return inst;
+  }));
+  const counts = new Map();
+  instances.forEach(it => counts.set(it.key, (counts.get(it.key) || 0) + 1));
+  const seen = new Map();
+  instances.forEach(it => {
+    const total = counts.get(it.key);
+    const idx = seen.get(it.key) || 0; seen.set(it.key, idx + 1);
+    it.keep = (opts.rule === 'all')
+      ? (total === 1)
+      : (total % 2 === 1 && idx === 0);   /* pair: 홀수면 첫 등장만 남김 */
+  });
+  const survivors = instances.filter(it => it.keep).map(it => ({ ch: it.ch }));
+  return { words: perWord, survivors, counts };
+}
+
+function babaEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ----- 렌더링 ----- */
+function babaRender(){
+  const res = babaCompute(babaState.words, babaState);
+  const hasWords = babaState.words.length > 0;
+
+  /* 결과(남은 글자) */
+  const answerEl = document.getElementById('baba-answer');
+  const survCountEl = document.getElementById('baba-surv-count');
+  if (answerEl) {
+    if (!hasWords) {
+      answerEl.innerHTML = '<span class="baba-empty">단어를 추가하면 남은 글자가 여기에 나타납니다.</span>';
+    } else if (res.survivors.length === 0) {
+      answerEl.innerHTML = '<span class="baba-empty">남은 글자가 없습니다 (모두 지워짐).</span>';
+    } else {
+      answerEl.innerHTML = res.survivors.map(s => '<span class="baba-keepchip">' + babaEsc(s.ch) + '</span>').join('');
+    }
+  }
+  if (survCountEl) survCountEl.textContent = hasWords ? (res.survivors.length + '자') : '';
+
+  /* 단어 수 */
+  const wordCountEl = document.getElementById('baba-word-count');
+  if (wordCountEl) wordCountEl.textContent = hasWords ? (babaState.words.length + '개 단어') : '';
+
+  /* 단어별 분해 목록 */
+  const listEl = document.getElementById('baba-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (!hasWords) {
+    const p = document.createElement('p'); p.className = 'empty';
+    p.textContent = '아직 추가된 단어가 없습니다.';
+    listEl.appendChild(p);
+    return;
+  }
+  res.words.forEach((wordChars, wi) => {
+    const row = document.createElement('div'); row.className = 'baba-word';
+    const lbl = document.createElement('span'); lbl.className = 'baba-wlabel'; lbl.textContent = 'W' + (wi + 1);
+    const tiles = document.createElement('div'); tiles.className = 'baba-tiles';
+    if (wordChars.length === 0) {
+      const em = document.createElement('span'); em.className = 'baba-empty'; em.textContent = '(빈 단어)';
+      tiles.appendChild(em);
+    } else {
+      wordChars.forEach(c => {
+        const t = document.createElement('span');
+        t.className = 'baba-tile ' + (c.keep ? 'keep' : 'struck');
+        t.textContent = c.ch;
+        tiles.appendChild(t);
+      });
+    }
+    const del = document.createElement('button');
+    del.className = 'baba-del'; del.type = 'button'; del.title = '이 단어 삭제';
+    del.textContent = '×'; del.dataset.wi = String(wi);
+    row.appendChild(lbl); row.appendChild(tiles); row.appendChild(del);
+    listEl.appendChild(row);
+  });
+}
+
+/* ----- 동작 ----- */
+function babaAddFromInput(){
+  const inp = document.getElementById('baba-input');
+  if (!inp) return;
+  /* 구분자: 공백류(전각 공백 U+3000 포함) + 모든 형태의 쉼표 —
+     ,(U+002C) 、(U+3001 일본어) ，(U+FF0C 전각) ､(U+FF64 반각). IME가 어떤 쉼표를 내든 단어가 나뉜다. */
+  const tokens = (inp.value || '').split(/[\s,、，､]+/).map(s => s.trim()).filter(Boolean);
+  inp.value = '';
+  if (tokens.length === 0) { inp.focus(); return; }
+  babaState.words = babaState.words.concat(tokens);
+  babaSaveState();
+  babaRender();
+  inp.focus();
+}
+function babaRemoveWord(wi){
+  babaState.words = babaState.words.filter((_, i) => i !== wi);
+  babaSaveState();
+  babaRender();
+}
+function babaClearAll(){
+  if (babaState.words.length === 0) return;
+  if (!confirm('단어 목록을 모두 비우시겠습니까?')) return;
+  babaState.words = [];
+  babaSaveState();
+  babaRender();
+}
+
+function babaInit(){
+  babaLoadState();
+  const inp = document.getElementById('baba-input');
+  const addBtn = document.getElementById('baba-add');
+  const clearBtn = document.getElementById('baba-clear');
+  const ruleSel = document.getElementById('baba-rule');
+  const optKata = document.getElementById('baba-opt-kata');
+  const optSmall = document.getElementById('baba-opt-small');
+  const optDia = document.getElementById('baba-opt-dia');
+  const listEl = document.getElementById('baba-list');
+
+  /* 컨트롤 초기값을 상태에 맞춤 */
+  if (ruleSel) ruleSel.value = babaState.rule;
+  if (optKata) optKata.checked = babaState.kataAsHira;
+  if (optSmall) optSmall.checked = babaState.smallAsLarge;
+  if (optDia) optDia.checked = babaState.ignoreDiacritic;
+
+  if (addBtn) addBtn.addEventListener('click', babaAddFromInput);
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); babaAddFromInput(); } });
+  if (clearBtn) clearBtn.addEventListener('click', babaClearAll);
+  if (ruleSel) ruleSel.addEventListener('change', () => {
+    babaState.rule = ruleSel.value === 'all' ? 'all' : 'pair';
+    babaSaveState(); babaRender();
+  });
+  const bindOpt = (el, prop) => { if (el) el.addEventListener('change', () => { babaState[prop] = el.checked; babaSaveState(); babaRender(); }); };
+  bindOpt(optKata, 'kataAsHira');
+  bindOpt(optSmall, 'smallAsLarge');
+  bindOpt(optDia, 'ignoreDiacritic');
+
+  /* 단어 삭제(×) — 이벤트 위임 */
+  if (listEl) listEl.addEventListener('click', e => {
+    const b = e.target.closest('.baba-del'); if (!b) return;
+    babaRemoveWord(Number(b.dataset.wi));
+  });
+
+  babaRender();
+}
+
 /* ---------- init ---------- */
 function init(){
   document.body.classList.toggle('detail-view', state.detail);
@@ -3005,6 +3346,7 @@ function init(){
   setMode(state.mode);   // also builds len filter + renders search
   refreshStrikeUI();
   graphInit();           // 규칙 그래프 탭 초기화 (상태 로드 + 단위 테스트 자동 실행)
+  babaInit();            // ババ抜き 탭 초기화 (상태 로드 + 렌더)
   setTab('search');
 }
 init();
