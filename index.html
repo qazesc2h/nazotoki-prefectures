@@ -471,10 +471,16 @@
   <section id="tab-graph" class="hidden">
     <div class="panel controls">
       <div class="field">
-        <label for="graphCharCount">글자 수 (1~12)</label>
+        <label for="graphWordText">단어 입력</label>
+        <input type="text" id="graphWordText" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="예: さくら" style="width:150px" />
+      </div>
+      <button class="btn" id="graphAddWordText">+ 단어 추가</button>
+      <div class="field">
+        <label for="graphCharCount">또는 글자 수 (1~12)</label>
         <input type="text" inputmode="numeric" id="graphCharCount" value="5" maxlength="2" style="width:80px" />
       </div>
-      <button class="btn" id="graphAddWord">+ 단어 추가</button>
+      <button class="btn" id="graphAddWord">+ 빈 칸</button>
       <button class="btn" id="graphConnectToggle" aria-pressed="false">🔗 규칙 연결: 끔</button>
       <button class="btn" id="graphLooseToggle" aria-pressed="false" title="같은 글자 규칙에서 작은 글자(ぁゃっ)와 큰 글자(あやつ)를 같은 글자로 취급">작은⇄큰 같은 글자: 끔</button>
       <span class="hint" id="graphConnectHint" style="display:none">셀에서 다른 셀로 드래그해 규칙을 만드세요</span>
@@ -1438,6 +1444,39 @@ function graphAddWord(words, charCount) {
 }
 
 /**
+ * 단어 텍스트를 셀 글자 배열로 분해한다. 카타카나→히라가나 정규화 후 공백류 제거, 코드포인트 단위.
+ * (한 셀 = 한 글자 — 셀 편집기 graphCommitCellChar 와 동일한 정규화 규칙)
+ * @param {string} text
+ * @returns {string[]}
+ */
+function graphParseWordChars(text) {
+  const norm = kataToHira(String(text == null ? '' : text));
+  return Array.from(norm).filter(function(c){ return !/\s/.test(c); });
+}
+
+/**
+ * 글자가 채워진 단어 객체 생성 (단어 텍스트로 추가할 때).
+ * @param {number} index - 단어 배열 내 위치
+ * @param {string[]} chars - 셀에 채울 글자 배열 (정규화 완료)
+ */
+function graphCreateWordFromChars(index, chars) {
+  const letters = chars.map(function(ch, s){ return { cellId: index + '-' + s, char: ch, source: 'user', cellType: '' }; });
+  return { index: index, charCount: chars.length, letters: letters };
+}
+
+/**
+ * 단어 텍스트로 단어 추가. 분해한 글자 수가 1~12가 아니면 null 반환(불변).
+ * @param {Array} words
+ * @param {string} text
+ * @returns {Array|null}
+ */
+function graphAddWordFromText(words, text) {
+  const chars = graphParseWordChars(text);
+  if (!graphValidateCharCount(chars.length)) return null;
+  return words.concat([graphCreateWordFromChars(words.length, chars)]);
+}
+
+/**
  * 지정 인덱스의 단어를 삭제하고 나머지를 재인덱싱한다.
  * 삭제된 단어의 셀을 참조하는 규칙도 제거하고, 나머지 규칙의 cellId를 재매핑한다.
  * @param {Array} words
@@ -2377,6 +2416,26 @@ function graphInitForm() {
         graphRender();
       }
     });
+  }
+
+  /* 단어 텍스트로 추가 (글자가 채워진 단어) — 엔터 또는 「+ 단어 추가」 */
+  const wordTextInput = document.getElementById('graphWordText');
+  const addWordTextBtn = document.getElementById('graphAddWordText');
+  if (wordTextInput && addWordTextBtn) {
+    const addByText = function() {
+      const newWords = graphAddWordFromText(graphState.words, wordTextInput.value);
+      if (!newWords) {
+        alert('단어는 1~12글자로 입력하세요.');
+        return;
+      }
+      graphState.words = newWords;
+      graphSaveState();
+      graphRender();   /* 엔진 재계산·렌더 포함 → 채워진 글자로 추론/충돌 즉시 반영 */
+      wordTextInput.value = '';
+      wordTextInput.focus();
+    };
+    addWordTextBtn.addEventListener('click', addByText);
+    wordTextInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); addByText(); } });
   }
 
   if (clearBtn) {
