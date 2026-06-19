@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-<title>도도부현 / 현청소재지 검색 — 나조토키 도우미</title>
+<title>나조토키 도우미</title>
 <style>
   :root {
     --bg: #f4f6f4;
@@ -66,10 +66,11 @@
   .btn:disabled { opacity: .45; cursor: default; }
 
   /* tabs */
-  nav.tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin: 6px 0 16px; flex-wrap: wrap; }
+  nav.tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--border); margin: 6px 0 16px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
   nav.tabs button {
     font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--muted);
-    padding: 9px 16px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; font-weight: 600;
+    padding: 9px 12px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; font-weight: 600;
+    white-space: nowrap; flex-shrink: 0;
   }
   nav.tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
 
@@ -170,16 +171,134 @@
   footer.app a { color: var(--link); }
   .hidden { display: none !important; }
   .empty { padding: 28px; text-align: center; color: var(--muted); }
+
+  /* ========== 규칙 그래프 탭 ========== */
+  .graph-word-label {
+    font-size: 12px; font-weight: 700; color: var(--muted); min-width: 28px; flex-shrink: 0;
+  }
+  .graph-cell {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border: 1.5px solid var(--border);
+    border-radius: 6px; background: var(--panel-2);
+    font-size: 18px; font-family: var(--jp); flex-shrink: 0; cursor: default;
+  }
+  .graph-word-row:last-child { border-bottom: 0 !important; }
+
+  /* 규칙 그래프 캔버스 (Sub-AC 2) */
+  #graph-canvas-wrap { overflow: auto; }
+  svg.graph-canvas { display: block; min-width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .graph-word-box { cursor: grab; }
+  .graph-word-box:active { cursor: grabbing; }
+
+  /* 규칙 그래프 우측 단어 목록 (Sub-AC 3) */
+  #graph-main-layout {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  #graph-canvas-area { flex: 1; min-width: 0; max-width: 100%; }
+  #graph-word-list { width: 220px; flex-shrink: 0; }
+  @media (max-width: 640px) {
+    #graph-main-layout { flex-direction: column; align-items: stretch; }
+    #graph-canvas-area { width: 100%; }
+    #graph-word-list { width: 100%; }
+  }
+  .graph-word-blanks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+  }
+  .graph-word-slot {
+    display: inline-flex;
+    align-items: flex-end;
+    justify-content: center;
+    border-bottom: 2px solid var(--border);
+    min-width: 20px;
+    height: 26px;
+    text-align: center;
+    font-size: 16px;
+    font-family: var(--jp);
+    color: var(--muted);
+    padding: 0 2px;
+    cursor: pointer;
+    transition: border-bottom-color .1s;
+  }
+  .graph-word-slot:hover {
+    border-bottom-color: var(--accent);
+    color: var(--text);
+  }
+  .graph-word-slot.filled {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+  .graph-word-slot.sel {
+    border-bottom-color: var(--accent);
+    color: var(--text);
+    background: var(--accent-soft);
+    border-radius: 3px 3px 0 0;
+  }
+
+  /* Sub-AC 5: 셀 편집기 플로팅 입력 */
+  #graph-cell-editor {
+    position: fixed;
+    z-index: 9999;
+    text-align: center;
+    font-family: var(--jp);
+    font-size: 20px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 2.5px solid var(--accent);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--text);
+    outline: none;
+    display: none;
+    box-shadow: 0 2px 12px rgba(0,0,0,.22);
+    caret-color: var(--accent);
+  }
+  #graph-cell-editor.visible {
+    display: block;
+  }
+
+  /* 규칙 엔진: 연결 모드 · 에지 · 메뉴 · 추론/충돌 */
+  #graph-canvas-wrap.connect-mode svg.graph-canvas { cursor: crosshair; }
+  #graphConnectToggle.on, #graphLooseToggle.on { background: var(--accent); color: #3a2a00; font-weight: 700; }
+  @media (prefers-color-scheme: dark){ #graphConnectToggle.on, #graphLooseToggle.on { color: #1a1205; } }
+  .graph-edge { cursor: pointer; }
+  .graph-word-slot.graph-inferred { color: var(--muted); font-style: italic; border-bottom-style: dashed; }
+  .graph-word-slot.graph-conflict { color: #ef4444; border-bottom-color: #ef4444; }
+  #graph-rule-menu, #graph-cell-menu {
+    position: fixed; z-index: 10000; display: none;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.28); padding: 6px; min-width: 162px;
+  }
+  .graph-rule-menu-item {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    font: inherit; font-size: 13px; text-align: left; border: 0; background: transparent;
+    color: var(--text); padding: 7px 8px; border-radius: 6px; cursor: pointer;
+  }
+  .graph-rule-menu-item:hover { background: var(--panel-2); }
+  .graph-rule-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; display: inline-block; }
+  #graph-edge-pop {
+    position: fixed; z-index: 10000; display: none; flex-direction: column; gap: 5px; min-width: 120px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.28); padding: 6px;
+  }
+  #graph-edge-label { font-size: 12px; color: var(--text); padding: 2px 4px 0; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="app">
-    <h1>도도부현 검색 <small>나조토키 도우미</small></h1>
+    <h1>나조토키 도우미</h1>
     <div class="spacer"></div>
     <div class="seg" id="modeSeg" role="tablist" aria-label="모드">
       <button data-mode="pref" class="on">도도부현</button>
       <button data-mode="cap">현청소재지</button>
+      <button data-view="graph">규칙 그래프</button>
     </div>
     <div class="strike-status hidden" id="strikeStatus">
       <span id="strikeCount"></span>
@@ -282,6 +401,34 @@
     <div id="galWrap"></div>
   </section>
 
+  <!-- RULE GRAPH TAB -->
+  <section id="tab-graph" class="hidden">
+    <div class="panel controls">
+      <div class="field">
+        <label for="graphCharCount">글자 수 (1~12)</label>
+        <input type="text" inputmode="numeric" id="graphCharCount" value="5" maxlength="2" style="width:80px" />
+      </div>
+      <button class="btn" id="graphAddWord">+ 단어 추가</button>
+      <button class="btn" id="graphConnectToggle" aria-pressed="false">🔗 규칙 연결: 끔</button>
+      <button class="btn" id="graphLooseToggle" aria-pressed="false" title="같은 글자 규칙에서 작은 글자(ぁゃっ)와 큰 글자(あやつ)를 같은 글자로 취급">작은⇄큰 같은 글자: 끔</button>
+      <span class="hint" id="graphConnectHint" style="display:none">셀에서 다른 셀로 드래그해 규칙을 만드세요</span>
+      <div class="spacer"></div>
+      <button class="btn" id="graphClearAll">전체 삭제</button>
+    </div>
+    <details class="panel" id="graph-legend-wrap" style="margin-bottom:12px" open>
+      <summary style="cursor:pointer; font-size:12px; color:var(--muted); padding:9px 12px; user-select:none">규칙선 색상 안내</summary>
+      <div id="graph-legend" style="padding:2px 12px 12px; display:flex; flex-wrap:wrap; row-gap:6px"></div>
+    </details>
+    <div id="graph-main-layout">
+      <div id="graph-canvas-area">
+        <div class="panel" id="graph-canvas-wrap" style="min-height:280px; position:relative; overflow:auto">
+          <p class="empty" id="graph-empty">단어를 추가하면 여기에 규칙 그래프가 나타납니다.</p>
+        </div>
+      </div>
+      <div id="graph-word-list"></div>
+    </div>
+  </section>
+
   <footer class="app">
     <p><strong>데이터</strong> 47 도도부현·현청소재지(漢字·かな·로마자·지역·JIS X 0401 순서) — 웹 교차검증 완료. 도쿄도청 소재지는 신주쿠구(新宿区).</p>
     <p><strong>지도</strong> SVG: <a href="https://github.com/geolonia/japanese-prefectures" target="_blank" rel="noopener">geolonia/japanese-prefectures</a> (Wikipedia 日本地図.svg 기반, 라이선스 GFDL). 글자수는 かな(히라가나) 글자 수 기준입니다.</p>
@@ -289,6 +436,15 @@
 </div>
 
 <div class="tooltip" id="tooltip"></div>
+<!-- Sub-AC 5: 셀 편집기 플로팅 입력 (캔버스 셀 + 목록 슬롯 공용) -->
+<input type="text" id="graph-cell-editor" maxlength="4"
+  autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" />
+<!-- 규칙 종류 선택 메뉴 (셀→셀 연결 후) -->
+<div id="graph-rule-menu"></div>
+<!-- 셀 컨텍스트 메뉴 (작은 글자만 칸 토글) -->
+<div id="graph-cell-menu"></div>
+<!-- 규칙선 삭제 팝업 -->
+<div id="graph-edge-pop"><span id="graph-edge-label"></span><button class="btn" id="graph-edge-del" type="button">🗑 삭제</button></div>
 
 <!-- hidden source SVG map (cloned at runtime for map + silhouettes) -->
 <div id="jpmap-src" style="position:absolute;width:0;height:0;overflow:hidden;left:-9999px" aria-hidden="true">
@@ -675,6 +831,7 @@ const els = {
   tooltip: $('#tooltip'),
   sections: {
     search: $('#tab-search'), all: $('#tab-all'), map: $('#tab-map'), shapes: $('#tab-shapes'),
+    graph: $('#tab-graph'),
   },
 };
 
@@ -1037,6 +1194,7 @@ function renderActiveTab(){
   else if (state.tab === 'all') renderAllTab();
   else if (state.tab === 'map'){ if (!mapBuilt) buildMap(); else { updateMapLabels(); applyStruckToMap(); } }
   else if (state.tab === 'shapes') renderGallery();
+  else if (state.tab === 'graph') graphRender();
 }
 /* re-render everything that's currently relevant after a strike change */
 function renderAll(){
@@ -1048,23 +1206,34 @@ function renderAll(){
 /* ---------- tab + mode wiring ---------- */
 function setTab(tab){
   state.tab = tab;
+  const isGraph = (tab === 'graph');
+  /* 규칙 그래프는 상단 토글 레벨 — 콘텐츠 탭 줄을 숨기고 그래프 도구만 전체 표시 */
+  els.tabs.classList.toggle('hidden', isGraph);
   els.tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   Object.entries(els.sections).forEach(([k, sec]) => sec.classList.toggle('hidden', k !== tab));
+  /* 상단 토글 활성 상태: 규칙 그래프 vs 도도부현/현청소재지 */
+  els.modeSeg.querySelectorAll('button').forEach(b => {
+    if (b.dataset.view === 'graph') b.classList.toggle('on', isGraph);
+    else b.classList.toggle('on', !isGraph && b.dataset.mode === state.mode);
+  });
   renderActiveTab();
 }
 function setMode(mode){
   state.mode = mode;
   localStorage.setItem(LS_MODE, mode);
   els.modeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
-  document.querySelector('header.app h1').firstChild.textContent =
-    (mode === 'cap' ? '현청소재지 검색 ' : '도도부현 검색 ');
   rebuildLenFilter();
   renderActiveTab();
   // keep other prebuilt views in sync with mode
   if (mapBuilt && state.tab !== 'map') updateMapLabels();
 }
 
-els.modeSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.mode); });
+els.modeSeg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.view === 'graph') { setTab('graph'); return; }
+  if (state.tab === 'graph') setTab('search');  /* 그래프 뷰에서 데이터 모드 선택 시 검색 도구로 복귀 */
+  setMode(b.dataset.mode);
+});
 els.tabs.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTab(b.dataset.tab); });
 els.resetStrike.addEventListener('click', () => { state.struck.clear(); saveStruck(); refreshStrikeUI(); renderAll(); });
 els.q.addEventListener('input', runSearch);
@@ -1085,6 +1254,1683 @@ els.mapClearPins.addEventListener('click', () => {
 });
 els.galSort.addEventListener('change', renderGallery);
 
+/* ========================================================================
+   규칙 그래프 탭 (Rule Graph Tab)
+   ======================================================================== */
+
+/* ---- localStorage key (기존 탭과 분리) ---- */
+const LS_GRAPH = 'nazotoki-graph-v1';
+
+/* ================================================================
+   순수 데이터 레이어 함수 (DOM 의존 없음 — 단위 테스트 가능)
+   ================================================================ */
+
+/**
+ * charCount 유효성 검사: 1~12 정수인지 확인.
+ * @param {*} n
+ * @returns {boolean}
+ */
+function graphValidateCharCount(n) {
+  const num = Number(n);
+  return Number.isInteger(num) && num >= 1 && num <= 12;
+}
+
+/**
+ * 새 단어 객체 생성.
+ * @param {number} index - 단어 배열 내 위치
+ * @param {number} charCount - 글자 수 (1~12)
+ * @returns {{index: number, charCount: number, letters: Array<{cellId:string, char:string, source:string}>}}
+ */
+function graphCreateWord(index, charCount) {
+  const letters = [];
+  for (let s = 0; s < charCount; s++) {
+    letters.push({ cellId: index + '-' + s, char: '', source: 'user', smallOnly: false });
+  }
+  return { index: index, charCount: charCount, letters: letters };
+}
+
+/**
+ * 단어 배열에 단어 추가. 성공 시 새 배열 반환, charCount 무효 시 null 반환.
+ * 원본 배열은 변경하지 않음(불변).
+ * @param {Array} words
+ * @param {number} charCount
+ * @returns {Array|null}
+ */
+function graphAddWord(words, charCount) {
+  if (!graphValidateCharCount(charCount)) return null;
+  const index = words.length;
+  return words.concat([graphCreateWord(index, charCount)]);
+}
+
+/**
+ * 지정 인덱스의 단어를 삭제하고 나머지를 재인덱싱한다.
+ * 삭제된 단어의 셀을 참조하는 규칙도 제거하고, 나머지 규칙의 cellId를 재매핑한다.
+ * @param {Array} words
+ * @param {Array} rules
+ * @param {number} targetIndex - 삭제할 단어의 인덱스
+ * @returns {{words: Array, rules: Array}}
+ */
+function graphRemoveWord(words, rules, targetIndex) {
+  /* 삭제 후 남은 단어들을 0-based로 재인덱싱 */
+  const filteredWords = words.filter(function(w) { return w.index !== targetIndex; });
+  const newWords = filteredWords.map(function(w, newIdx) {
+    return {
+      index: newIdx,
+      charCount: w.charCount,
+      letters: w.letters.map(function(l, s) {
+        return { cellId: newIdx + '-' + s, char: l.char, source: l.source };
+      }),
+    };
+  });
+
+  /* cellId 재매핑 헬퍼: targetIndex 단어 → null, 그 뒤 단어 → 1씩 감소 */
+  function remapCellId(cellId) {
+    const parts = cellId.split('-');
+    const wi = Number(parts[0]);
+    const si = Number(parts[1]);
+    if (wi === targetIndex) return null;
+    const newWi = wi > targetIndex ? wi - 1 : wi;
+    return newWi + '-' + si;
+  }
+
+  const newRules = (rules || [])
+    .filter(function(r) {
+      return remapCellId(r.sourceCell) !== null && remapCellId(r.targetCell) !== null;
+    })
+    .map(function(r) {
+      return Object.assign({}, r, {
+        sourceCell: remapCellId(r.sourceCell),
+        targetCell: remapCellId(r.targetCell),
+      });
+    });
+
+  return { words: newWords, rules: newRules };
+}
+
+/* ================================================================
+   캔버스 레이아웃 상수 및 순수 함수 (Sub-AC 2, DOM 의존 없음)
+   ================================================================ */
+
+/* 셀/박스 치수 — graphUpdateMetrics()가 화면 폭에 따라 갱신 (모바일에선 작게) */
+let GRAPH_CELL_W = 44;      // 셀 너비 px
+let GRAPH_CELL_H = 48;      // 셀 높이 px
+let GRAPH_CELL_GAP = 6;     // 셀 수평 간격
+let GRAPH_BOX_PAD_X = 12;   // 박스 좌우 내부 여백
+let GRAPH_BOX_PAD_TOP = 14; // 박스 위 여백
+let GRAPH_BOX_PAD_BOT = 12; // 박스 아래 내부 여백
+let GRAPH_BOX_GAP_X = 24;   // 박스 수평 간격
+let GRAPH_BOX_GAP_Y = 24;   // 박스 수직 간격
+let GRAPH_CANVAS_PAD = 20;  // 캔버스 가장자리 여백
+let GRAPH_CHAR_FONT = 20;   // 셀 글자 폰트 px
+let GRAPH_SLOT_FONT = 9;    // 슬롯 인덱스 폰트 px
+/** 화면 폭에 따라 셀/박스/폰트 치수를 조정한다 (모바일에서 셀을 작게). */
+function graphUpdateMetrics(){
+  var narrow = !!(window.matchMedia && window.matchMedia('(max-width: 640px)').matches);
+  if (narrow){
+    GRAPH_CELL_W = 30; GRAPH_CELL_H = 34; GRAPH_CELL_GAP = 4;
+    GRAPH_BOX_PAD_X = 8; GRAPH_BOX_PAD_TOP = 11; GRAPH_BOX_PAD_BOT = 8;
+    GRAPH_BOX_GAP_X = 14; GRAPH_BOX_GAP_Y = 14; GRAPH_CANVAS_PAD = 12;
+    GRAPH_CHAR_FONT = 16; GRAPH_SLOT_FONT = 8;
+  } else {
+    GRAPH_CELL_W = 44; GRAPH_CELL_H = 48; GRAPH_CELL_GAP = 6;
+    GRAPH_BOX_PAD_X = 12; GRAPH_BOX_PAD_TOP = 14; GRAPH_BOX_PAD_BOT = 12;
+    GRAPH_BOX_GAP_X = 24; GRAPH_BOX_GAP_Y = 24; GRAPH_CANVAS_PAD = 20;
+    GRAPH_CHAR_FONT = 20; GRAPH_SLOT_FONT = 9;
+  }
+}
+
+/**
+ * 단어 박스 크기 계산 (순수 함수)
+ * @param {number} charCount
+ * @returns {{w: number, h: number}}
+ */
+function graphBoxSize(charCount) {
+  var w = GRAPH_BOX_PAD_X * 2 + charCount * GRAPH_CELL_W + Math.max(0, charCount - 1) * GRAPH_CELL_GAP;
+  var h = GRAPH_BOX_PAD_TOP + GRAPH_CELL_H + GRAPH_BOX_PAD_BOT;
+  return { w: w, h: h };
+}
+
+/**
+ * 두 박스의 겹침 여부 판정 (순수 함수; 경계만 접촉하는 경우는 겹침 아님)
+ * @param {{x:number,y:number,w:number,h:number}} a
+ * @param {{x:number,y:number,w:number,h:number}} b
+ * @returns {boolean}
+ */
+function graphBoxesOverlap(a, b) {
+  return !(a.x + a.w <= b.x || b.x + b.w <= a.x ||
+           a.y + a.h <= b.y || b.y + b.h <= a.y);
+}
+
+/**
+ * 겹침 없는 자동 배치 알고리즘 (순수 함수, DOM 없음)
+ *
+ * 이미 저장된 위치(savedPositions)가 있는 단어는 그 위치를 우선 사용한다.
+ * 위치가 없는 단어는 선반(shelf) 방식으로 오른쪽→다음 줄 순으로 배치한다.
+ * 선반 배치는 저장된 박스들의 아래쪽부터 시작해 겹치지 않는다.
+ *
+ * @param {Array} words            - 단어 배열 [{index, charCount, letters}]
+ * @param {Object} savedPositions  - {[wordIndex]: {x,y}} 이미 저장된 박스 원점
+ * @param {number} canvasW         - 캔버스 폭(px)
+ * @returns {Object}               - {[wordIndex]: {x,y}}
+ */
+function graphComputeLayout(words, savedPositions, canvasW) {
+  var saved = savedPositions || {};
+  canvasW = canvasW || 800;
+
+  var result = {};
+  var placedBoxes = []; // {x,y,w,h}
+
+  /* Pass 1: 저장된 위치를 먼저 확정 */
+  words.forEach(function(w) {
+    var sp = saved[w.index];
+    if (sp !== undefined && sp !== null) {
+      result[w.index] = { x: sp.x, y: sp.y };
+      var sz = graphBoxSize(w.charCount);
+      placedBoxes.push({ x: sp.x, y: sp.y, w: sz.w, h: sz.h });
+    }
+  });
+
+  /* Pass 2: 위치 없는 단어 → 선반 배치 */
+  var toPlace = words.filter(function(w) { return result[w.index] === undefined; });
+  if (!toPlace.length) return result;
+
+  /* 선반 시작 y = 기존 박스들의 최하단 아래 */
+  var shelfY = GRAPH_CANVAS_PAD;
+  if (placedBoxes.length) {
+    var maxBottom = Math.max.apply(null, placedBoxes.map(function(b) { return b.y + b.h; }));
+    shelfY = maxBottom + GRAPH_BOX_GAP_Y;
+  }
+  var shelfX = GRAPH_CANVAS_PAD;
+  var shelfH = 0;
+
+  toPlace.forEach(function(w) {
+    var sz = graphBoxSize(w.charCount);
+
+    /* 현재 선반에 넣으면 오른쪽으로 넘치면 다음 줄로 이동
+       (첫 번째 박스는 항상 현재 줄에 놓음) */
+    if (shelfX > GRAPH_CANVAS_PAD && shelfX + sz.w > canvasW - GRAPH_CANVAS_PAD) {
+      shelfY += shelfH + GRAPH_BOX_GAP_Y;
+      shelfX = GRAPH_CANVAS_PAD;
+      shelfH = 0;
+    }
+
+    result[w.index] = { x: shelfX, y: shelfY };
+    placedBoxes.push({ x: shelfX, y: shelfY, w: sz.w, h: sz.h });
+    shelfX += sz.w + GRAPH_BOX_GAP_X;
+    shelfH = Math.max(shelfH, sz.h);
+  });
+
+  return result;
+}
+
+/**
+ * 단어 삭제 후 positions 재매핑 (순수 함수)
+ * targetIndex 단어의 위치는 제거하고,
+ * targetIndex보다 큰 인덱스는 1씩 감소시킨다.
+ * @param {Object} positions  - {[wordIndex]: {x,y}}
+ * @param {number} targetIndex
+ * @returns {Object}
+ */
+function graphRemapPositions(positions, targetIndex) {
+  var result = {};
+  Object.keys(positions).forEach(function(key) {
+    var wi = Number(key);
+    if (!Number.isFinite(wi)) return;
+    if (wi === targetIndex) return; // 삭제된 단어
+    var newWi = wi > targetIndex ? wi - 1 : wi;
+    result[newWi] = positions[key];
+  });
+  return result;
+}
+
+/* ================================================================
+   Sub-AC 5: 양방향 입력 동기화 — 순수 함수 (DOM 의존 없음)
+   ================================================================ */
+
+/**
+ * graphState.words에서 cellId에 해당하는 letter 객체를 반환한다.
+ * 없으면 null을 반환한다.
+ * @param {string} cellId
+ * @returns {{cellId:string, char:string, source:string}|null}
+ */
+function graphFindLetter(cellId) {
+  for (var wi = 0; wi < graphState.words.length; wi++) {
+    var w = graphState.words[wi];
+    for (var si = 0; si < w.letters.length; si++) {
+      if (w.letters[si].cellId === cellId) return w.letters[si];
+    }
+  }
+  return null;
+}
+
+/**
+ * 단어 배열에서 특정 cellId의 글자를 업데이트한다 (불변, 순수 함수).
+ * @param {Array} words
+ * @param {string} cellId
+ * @param {string} char - 히라가나로 정규화된 단일 글자 (또는 빈 문자열)
+ * @param {string} source - 'user' 또는 'inferred'
+ * @returns {Array} 새 단어 배열
+ */
+function graphUpdateCellChar(words, cellId, char, source) {
+  return words.map(function(w) {
+    var hasCell = w.letters.some(function(l) { return l.cellId === cellId; });
+    if (!hasCell) return w;
+    return Object.assign({}, w, {
+      letters: w.letters.map(function(l) {
+        if (l.cellId !== cellId) return l;
+        return Object.assign({}, l, { char: char, source: source || 'user' });
+      }),
+    });
+  });
+}
+
+/* ================================================================
+   그래프 상태 관리
+   ================================================================ */
+
+let graphState = {
+  words: [],       /* Array<{index, charCount, letters[]}> */
+  rules: [],       /* Array<{sourceCell, targetCell, ruleType, ruleClass, ruleDirection}> */
+  positions: {},   /* {[cellId]: {x, y}} — 후속 AC에서 채워짐 */
+  looseSmallLarge: false,  /* 전역: 같은 글자 규칙에서 작은⇄큰을 같은 글자로 취급 */
+};
+
+function graphLoadState() {
+  try {
+    const raw = localStorage.getItem(LS_GRAPH);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.words)) return;
+    graphState.words = parsed.words;
+    graphState.rules = Array.isArray(parsed.rules) ? parsed.rules : [];
+    graphState.positions = (parsed.positions && typeof parsed.positions === 'object') ? parsed.positions : {};
+    graphState.looseSmallLarge = !!parsed.looseSmallLarge;
+    /* 레거시 same_char_sl 규칙 → same_char 로 통합 */
+    graphState.rules.forEach(function(r){ if (r.ruleType === 'same_char_sl') r.ruleType = 'same_char'; });
+  } catch (e) { /* JSON 파싱 실패 무시 */ }
+}
+
+function graphSaveState() {
+  /* 추론값(inferred)은 저장하지 않고 로드 시 재계산 — 사용자 입력값만 저장 */
+  const toSave = {
+    words: graphState.words.map(function(w) {
+      return {
+        index: w.index,
+        charCount: w.charCount,
+        letters: w.letters.map(function(l) {
+          return {
+            cellId: l.cellId,
+            char: l.source === 'user' ? l.char : '',
+            source: 'user',
+            smallOnly: !!l.smallOnly,
+          };
+        }),
+      };
+    }),
+    rules: graphState.rules,
+    positions: graphState.positions,
+    looseSmallLarge: graphState.looseSmallLarge,
+  };
+  localStorage.setItem(LS_GRAPH, JSON.stringify(toSave));
+}
+
+/* ================================================================
+   그래프 렌더링 (단어 목록 + 캔버스 플레이스홀더)
+   ================================================================ */
+
+/**
+ * 우측 단어 목록 패널 DOM 요소를 빌드한다 (순수 렌더링 — 이벤트 핸들러 없음).
+ * 각 단어의 글자 슬롯을 밑줄 빈칸(_) 형태로 표시하며, 글자가 있으면 해당 글자를 보여준다.
+ * DOM 렌더링 테스트에서 직접 호출 가능하다.
+ *
+ * @param {Array} words  - graphState.words 형태의 단어 배열
+ * @returns {HTMLElement} - 렌더링된 패널 컨테이너 요소
+ */
+function graphBuildWordListEl(words) {
+  const container = document.createElement('div');
+  if (!words.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty';
+    empty.style.cssText = 'font-size:13px; padding:20px 12px; text-align:center';
+    empty.textContent = '단어를 추가하세요';
+    container.appendChild(empty);
+    return container;
+  }
+
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.style.cssText = 'padding:12px';
+
+  const hdr = document.createElement('p');
+  hdr.className = 'count';
+  hdr.style.marginBottom = '8px';
+  hdr.textContent = words.length + '개 단어';
+  panel.appendChild(hdr);
+
+  words.forEach(function(w) {
+    const row = document.createElement('div');
+    row.className = 'graph-word-row';
+    row.setAttribute('data-word-index', String(w.index));
+    row.style.cssText = 'padding:6px 0; border-bottom:1px solid var(--border)';
+
+    /* 단어 헤더: "W0  3자  [삭제]" */
+    const rowHdr = document.createElement('div');
+    rowHdr.style.cssText = 'display:flex; align-items:center; justify-content:flex-end; margin-bottom:2px';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'graph-word-label';
+    lbl.style.display = 'none';
+    lbl.textContent = 'W' + w.index;
+    rowHdr.appendChild(lbl);
+
+    const cnt = document.createElement('span');
+    cnt.style.cssText = 'display:none';
+    cnt.textContent = w.charCount + '자';
+    rowHdr.appendChild(cnt);
+
+    /* 삭제 버튼 — 이벤트 핸들러는 graphRenderWordList에서 부착 */
+    const del = document.createElement('button');
+    del.className = 'btn';
+    del.dataset.delWord = String(w.index);
+    del.style.cssText = 'font-size:11px; padding:2px 7px; flex-shrink:0';
+    del.textContent = '삭제';
+    rowHdr.appendChild(del);
+
+    row.appendChild(rowHdr);
+
+    /* 밑줄 빈칸 슬롯: 비어 있으면 "_", 글자가 있으면 해당 글자 */
+    const blanks = document.createElement('div');
+    blanks.className = 'graph-word-blanks';
+    blanks.setAttribute('data-char-count', String(w.charCount));
+
+    w.letters.forEach(function(l) {
+      const slot = document.createElement('span');
+      slot.className = 'graph-word-slot' + (l.char ? ' filled' : '');
+      slot.setAttribute('data-cell-id', l.cellId);
+      slot.textContent = l.char || '_';
+      blanks.appendChild(slot);
+    });
+
+    row.appendChild(blanks);
+    panel.appendChild(row);
+  });
+
+  container.appendChild(panel);
+  return container;
+}
+
+/**
+ * 우측 단어 목록 패널을 렌더링하고 삭제 버튼 및 슬롯 클릭 이벤트 핸들러를 부착한다.
+ */
+function graphRenderWordList() {
+  const wrap = document.getElementById('graph-word-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  wrap.appendChild(graphBuildWordListEl(graphState.words));
+
+  /* 삭제 버튼 이벤트 핸들러 부착 */
+  wrap.querySelectorAll('[data-del-word]').forEach(function(btn) {
+    var idx = parseInt(btn.dataset.delWord, 10);
+    btn.addEventListener('click', function() {
+      var result = graphRemoveWord(graphState.words, graphState.rules, idx);
+      graphState.words = result.words;
+      graphState.rules = result.rules;
+      graphState.positions = graphRemapPositions(graphState.positions, idx);
+      graphSaveState();
+      graphRender();
+    });
+  });
+
+  /* 글자 슬롯 클릭 → 편집기 표시 (Sub-AC 5) */
+  wrap.querySelectorAll('[data-cell-id]').forEach(function(slot) {
+    var cellId = slot.getAttribute('data-cell-id');
+    slot.addEventListener('click', function(e) {
+      e.stopPropagation(); /* 상위 클릭 이벤트 방지 */
+      var letter = graphFindLetter(cellId);
+      if (letter !== null) {
+        graphShowCellEditor(slot, cellId, letter.char);
+      }
+    });
+  });
+}
+
+/* ----------------------------------------------------------------
+   SVG 캔버스 렌더링 (Sub-AC 2)
+   ---------------------------------------------------------------- */
+
+/**
+ * SVG 캔버스에 단어 박스를 렌더링한다.
+ * - 위치가 없는 단어는 graphComputeLayout으로 자동 배치하고 저장한다.
+ * - 이미 위치가 있는 단어는 그 위치를 유지한다.
+ * - 각 단어 박스는 드래그로 이동 가능하다.
+ */
+function graphRenderCanvas() {
+  var wrap = document.getElementById('graph-canvas-wrap');
+  if (!wrap) return;
+
+  /* 빈 상태 메시지 표시 제어 */
+  var emptyEl = document.getElementById('graph-empty');
+  if (emptyEl) emptyEl.style.display = graphState.words.length ? 'none' : '';
+
+  if (!graphState.words.length) {
+    var oldSvg = wrap.querySelector('svg.graph-canvas');
+    if (oldSvg) oldSvg.remove();
+    return;
+  }
+
+  /* 캔버스 폭은 가용 폭에 맞춤 — 모바일에선 화면 폭 내에서 박스가 줄바꿈·세로로 쌓이게.
+     (탭이 숨겨져 clientWidth=0 일 때만 600 폴백) */
+  var canvasW = wrap.clientWidth > 0 ? Math.max(wrap.clientWidth - 8, 240) : 600;
+
+  /* 레이아웃 계산: 위치 없는 단어만 자동 배치 */
+  var layout = graphComputeLayout(graphState.words, graphState.positions, canvasW);
+
+  /* 새로 계산된 위치를 graphState.positions에 저장 (처음 추가된 단어만) */
+  var posChanged = false;
+  graphState.words.forEach(function(w) {
+    if (graphState.positions[w.index] === undefined && layout[w.index] !== undefined) {
+      graphState.positions[w.index] = layout[w.index];
+      posChanged = true;
+    }
+  });
+  if (posChanged) graphSaveState();
+
+  /* SVG 뷰박스 크기 계산 */
+  var maxRight = canvasW, maxBottom = 280;
+  graphState.words.forEach(function(w) {
+    var pos = layout[w.index];
+    if (!pos) return;
+    var sz = graphBoxSize(w.charCount);
+    maxRight = Math.max(maxRight, pos.x + sz.w + GRAPH_CANVAS_PAD);
+    maxBottom = Math.max(maxBottom, pos.y + sz.h + GRAPH_CANVAS_PAD);
+  });
+
+  /* SVG 요소 생성 또는 재사용 */
+  var svg = wrap.querySelector('svg.graph-canvas');
+  if (!svg) {
+    svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'graph-canvas');
+    wrap.appendChild(svg);
+  }
+  svg.setAttribute('viewBox', '0 0 ' + maxRight + ' ' + maxBottom);
+  svg.setAttribute('width', maxRight);
+  svg.setAttribute('height', maxBottom);
+  svg.innerHTML = '';
+
+  /* 단어 박스 렌더링 */
+  graphState.words.forEach(function(w) {
+    var pos = layout[w.index];
+    if (!pos) return;
+    var sz = graphBoxSize(w.charCount);
+
+    var g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'graph-word-box');
+    g.setAttribute('data-word-index', String(w.index));
+    g.setAttribute('transform', 'translate(' + pos.x + ',' + pos.y + ')');
+
+    /* 박스 배경 */
+    var bg = document.createElementNS(NS, 'rect');
+    bg.setAttribute('x', '0'); bg.setAttribute('y', '0');
+    bg.setAttribute('width', String(sz.w)); bg.setAttribute('height', String(sz.h));
+    bg.setAttribute('rx', '8'); bg.setAttribute('ry', '8');
+    bg.setAttribute('fill', 'var(--panel)');
+    bg.setAttribute('stroke', 'var(--border)');
+    bg.setAttribute('stroke-width', '1.5');
+    g.appendChild(bg);
+
+    /* 단어 레이블 */
+    var lbl = document.createElementNS(NS, 'text');
+    lbl.setAttribute('x', String(GRAPH_BOX_PAD_X));
+    lbl.setAttribute('y', '20');
+    lbl.setAttribute('font-size', '12');
+    lbl.setAttribute('font-weight', '700');
+    lbl.setAttribute('fill', 'var(--muted)');
+    lbl.setAttribute('font-family', 'var(--jp)');
+    lbl.setAttribute('pointer-events', 'none');
+    lbl.setAttribute('display', 'none'); /* 단어 타이틀 숨김 */
+    lbl.textContent = 'W' + w.index + ' (' + w.charCount + '자)';
+    g.appendChild(lbl);
+
+    /* 셀 박스 렌더링 */
+    w.letters.forEach(function(letter, si) {
+      var cx = GRAPH_BOX_PAD_X + si * (GRAPH_CELL_W + GRAPH_CELL_GAP);
+      var cy = GRAPH_BOX_PAD_TOP;
+
+      var cellG = document.createElementNS(NS, 'g');
+      cellG.setAttribute('data-cell-id', letter.cellId);
+
+      /* 셀 배경 사각형 */
+      var cellRect = document.createElementNS(NS, 'rect');
+      cellRect.setAttribute('x', String(cx));
+      cellRect.setAttribute('y', String(cy));
+      cellRect.setAttribute('width', String(GRAPH_CELL_W));
+      cellRect.setAttribute('height', String(GRAPH_CELL_H));
+      cellRect.setAttribute('rx', '6'); cellRect.setAttribute('ry', '6');
+      cellRect.setAttribute('fill', 'var(--panel-2)');
+      cellRect.setAttribute('stroke', 'var(--border)');
+      cellRect.setAttribute('stroke-width', '1.5');
+      if (letter.smallOnly) cellRect.setAttribute('stroke-dasharray', '3 2');
+      cellG.appendChild(cellRect);
+      if (letter.smallOnly){
+        var sbadge = document.createElementNS(NS, 'text');
+        sbadge.setAttribute('x', String(cx + GRAPH_CELL_W - 2));
+        sbadge.setAttribute('y', String(cy + GRAPH_CELL_H - 3));
+        sbadge.setAttribute('text-anchor', 'end');
+        sbadge.setAttribute('font-size', String(GRAPH_SLOT_FONT));
+        sbadge.setAttribute('fill', '#0ea5e9');
+        sbadge.setAttribute('pointer-events', 'none');
+        sbadge.textContent = '小';
+        cellG.appendChild(sbadge);
+      }
+
+      /* 가나 글자 */
+      var charTxt = document.createElementNS(NS, 'text');
+      charTxt.setAttribute('x', String(cx + GRAPH_CELL_W / 2));
+      charTxt.setAttribute('y', String(cy + GRAPH_CELL_H / 2 + GRAPH_CHAR_FONT * 0.36));
+      charTxt.setAttribute('text-anchor', 'middle');
+      charTxt.setAttribute('font-size', String(GRAPH_CHAR_FONT));
+      charTxt.setAttribute('class', 'graph-cell-char');
+      charTxt.setAttribute('font-family', 'var(--jp)');
+      charTxt.setAttribute('fill', 'var(--text)');
+      charTxt.setAttribute('pointer-events', 'none');
+      charTxt.textContent = letter.char || '';
+      cellG.appendChild(charTxt);
+
+      /* 슬롯 인덱스 (작게) */
+      var slotTxt = document.createElementNS(NS, 'text');
+      slotTxt.setAttribute('x', String(cx + 3));
+      slotTxt.setAttribute('y', String(cy + GRAPH_SLOT_FONT + 3));
+      slotTxt.setAttribute('font-size', String(GRAPH_SLOT_FONT));
+      slotTxt.setAttribute('fill', 'var(--muted)');
+      slotTxt.setAttribute('pointer-events', 'none');
+      slotTxt.textContent = String(si);
+      cellG.appendChild(slotTxt);
+
+      g.appendChild(cellG);
+    });
+
+    /* 드래그 이벤트 연결 */
+    graphAttachWordBoxDrag(svg, g, w.index);
+
+    svg.appendChild(g);
+  });
+}
+
+/**
+ * 단어 박스 드래그 핸들러 (포인터 이벤트, 마우스 + 터치 공통).
+ * 이동 없는 클릭은 셀 편집기를 여는 것으로 처리한다.
+ * @param {SVGSVGElement} svg
+ * @param {SVGGElement} boxGroup
+ * @param {number} wordIndex
+ */
+function graphAttachWordBoxDrag(svg, boxGroup, wordIndex) {
+  var dragging = false;
+  var moved = false;           /* 실제 이동이 4px 이상 있었는지 여부 */
+  var pendingCellClick = null; /* 이동 없는 클릭 시 편집기를 열 cellId */
+  var longPressTimer = null;   /* 길게 누르기 → 셀 메뉴 */
+  var startClientX = 0, startClientY = 0;
+  var startPosX = 0, startPosY = 0;
+
+  /* SVG 좌표계 스케일: clientPx → SVG user unit */
+  function getSvgScale() {
+    var bb = svg.getBoundingClientRect();
+    var vb = svg.viewBox.baseVal;
+    return {
+      sx: vb.width / (bb.width || 1),
+      sy: vb.height / (bb.height || 1)
+    };
+  }
+
+  boxGroup.addEventListener('pointerdown', function(e) {
+    /* 오른쪽 클릭(컨텍스트 메뉴용)은 드래그 시작하지 않음 */
+    if (e.button === 2) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dragging = true;
+    moved = false;
+    pendingCellClick = null;
+
+    try { boxGroup.setPointerCapture(e.pointerId); } catch (_) {}
+    startClientX = e.clientX;
+    startClientY = e.clientY;
+    var curPos = graphState.positions[wordIndex] || { x: 0, y: 0 };
+    startPosX = curPos.x;
+    startPosY = curPos.y;
+    boxGroup.style.cursor = 'grabbing';
+
+    /* 클릭 대상이 셀 안에 있으면 pendingCellClick 기록 */
+    var target = e.target;
+    while (target && target !== boxGroup) {
+      if (target.getAttribute && target.getAttribute('data-cell-id')) {
+        pendingCellClick = target;
+        break;
+      }
+      target = target.parentElement || target.parentNode;
+    }
+    /* 셀 위에서 길게 누르기(터치) → 셀 컨텍스트 메뉴 (작은 글자만 토글) */
+    if (pendingCellClick && !graphConnectMode) {
+      var cidLP = pendingCellClick.getAttribute('data-cell-id');
+      longPressTimer = setTimeout(function() {
+        moved = true; pendingCellClick = null;   /* 편집기/드래그 억제 */
+        graphOpenCellMenu(cidLP, startClientX, startClientY);
+      }, 500);
+    }
+  });
+
+  boxGroup.addEventListener('pointermove', function(e) {
+    if (!dragging) return;
+    var dx = Math.abs(e.clientX - startClientX);
+    var dy = Math.abs(e.clientY - startClientY);
+    if (dx > 4 || dy > 4) {
+      moved = true;
+      pendingCellClick = null; /* 이동했으므로 셀 클릭 취소 */
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }
+    if (!moved) return; /* 아직 임계값 미달이면 이동하지 않음 */
+    e.preventDefault();
+    var sc = getSvgScale();
+    var ddx = (e.clientX - startClientX) * sc.sx;
+    var ddy = (e.clientY - startClientY) * sc.sy;
+    var newX = Math.max(0, startPosX + ddx);
+    var newY = Math.max(0, startPosY + ddy);
+    boxGroup.setAttribute('transform', 'translate(' + newX + ',' + newY + ')');
+    graphState.positions[wordIndex] = { x: newX, y: newY };
+    graphRenderEdges(); /* 규칙선이 박스를 따라 이동 */
+  });
+
+  function endDrag(e) {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    if (!dragging) return;
+    dragging = false;
+    if (e && e.pointerId !== undefined) {
+      try { boxGroup.releasePointerCapture(e.pointerId); } catch (_) {}
+    }
+    boxGroup.style.cursor = 'grab';
+
+    if (moved) {
+      /* 실제 드래그: 위치 저장 */
+      graphSaveState();
+    } else if (pendingCellClick) {
+      /* 이동 없는 클릭: 해당 셀 편집기 열기 */
+      var cellId = pendingCellClick.getAttribute('data-cell-id');
+      var letter = graphFindLetter(cellId);
+      if (letter !== null) {
+        var rectEl = pendingCellClick.querySelector('rect') || pendingCellClick;
+        graphShowCellEditor(rectEl, cellId, letter.char);
+      }
+    }
+
+    moved = false;
+    pendingCellClick = null;
+  }
+
+  boxGroup.addEventListener('pointerup', endDrag);
+  boxGroup.addEventListener('pointercancel', endDrag);
+}
+
+function graphRender() {
+  graphUpdateMetrics();
+  graphComputeEngine();
+  graphRenderWordList();
+  graphRenderCanvas();
+  graphRenderEdges();
+  graphApplyEngineVisuals();
+  graphRenderLegend();
+}
+
+/* ================================================================
+   Sub-AC 5: 양방향 입력 동기화 — DOM 레이어
+   ================================================================ */
+
+/** 현재 선택된 cellId (편집 중인 칸) */
+var graphSelectedCellId = null;
+
+/**
+ * 캔버스 SVG에서 특정 cellId 칸의 글자 텍스트를 업데이트한다 (전체 재렌더 없이).
+ * @param {string} cellId
+ * @param {string} char
+ */
+function graphUpdateCanvasCell(cellId, char) {
+  var cellG = document.querySelector('svg.graph-canvas [data-cell-id="' + cellId + '"]');
+  if (!cellG) return;
+  var t = cellG.querySelector('text.graph-cell-char');
+  if (t) t.textContent = char || '';
+}
+
+/**
+ * 우측 단어 목록에서 특정 cellId 슬롯의 텍스트와 클래스를 업데이트한다 (전체 재렌더 없이).
+ * @param {string} cellId
+ * @param {string} char
+ */
+function graphUpdateWordListSlot(cellId, char) {
+  var slot = document.querySelector('#graph-word-list [data-cell-id="' + cellId + '"]');
+  if (!slot) return;
+  slot.textContent = char || '_';
+  slot.classList.toggle('filled', !!char);
+}
+
+/**
+ * 글자 커밋: 카타카나→히라가나 정규화 후 데이터 모델·캔버스·목록 동기화 및 저장.
+ * @param {string} cellId
+ * @param {string} rawChar - 사용자가 입력한 글자 (히라가나/카타카나/빈 문자열)
+ */
+function graphCommitCellChar(cellId, rawChar) {
+  var ch = kataToHira((rawChar || '').trim()).slice(0, 1);
+  var _l = graphFindLetter(cellId);
+  if (ch && _l && _l.smallOnly) ch = graphSmallForm(ch);  /* 작은 글자만 칸: 입력을 작은 글자로 변환 */
+  graphState.words = graphUpdateCellChar(graphState.words, cellId, ch, 'user');
+  graphSaveState();
+  /* 제약 엔진 재계산 후 파생값·충돌·규칙선 갱신 (편집기는 유지) */
+  graphComputeEngine();
+  graphApplyEngineVisuals();
+  graphRenderEdges();
+}
+
+/**
+ * 캔버스 셀과 단어 목록 슬롯의 선택 하이라이트를 설정/해제한다.
+ * @param {string|null} cellId - null이면 선택 해제
+ */
+function graphHighlightCell(cellId) {
+  /* 캔버스 — 모든 셀 스트로크 초기화 */
+  document.querySelectorAll('svg.graph-canvas [data-cell-id] rect').forEach(function(r) {
+    r.setAttribute('stroke', 'var(--border)');
+    r.setAttribute('stroke-width', '1.5');
+  });
+  /* 단어 목록 — 모든 슬롯 선택 클래스 제거 */
+  document.querySelectorAll('#graph-word-list [data-cell-id]').forEach(function(s) {
+    s.classList.remove('sel');
+  });
+
+  if (!cellId) return;
+
+  /* 캔버스 선택 하이라이트 */
+  var cellG = document.querySelector('svg.graph-canvas [data-cell-id="' + cellId + '"]');
+  if (cellG) {
+    var rect = cellG.querySelector('rect');
+    if (rect) {
+      rect.setAttribute('stroke', 'var(--accent)');
+      rect.setAttribute('stroke-width', '2.5');
+    }
+  }
+  /* 단어 목록 선택 하이라이트 */
+  var slot = document.querySelector('#graph-word-list [data-cell-id="' + cellId + '"]');
+  if (slot) slot.classList.add('sel');
+}
+
+/**
+ * 플로팅 편집기를 특정 DOM/SVG 요소 위에 위치시키고 활성화한다.
+ * @param {Element} targetEl - 기준 요소 (getBoundingClientRect 사용)
+ * @param {string} cellId
+ * @param {string} currentChar
+ */
+function graphShowCellEditor(targetEl, cellId, currentChar) {
+  var editor = document.getElementById('graph-cell-editor');
+  if (!editor) return;
+
+  graphSelectedCellId = cellId;
+  graphHighlightCell(cellId);
+
+  var bb = targetEl.getBoundingClientRect();
+  var edW = 44, edH = 44;
+  var left = bb.left + (bb.width - edW) / 2;
+  var top  = bb.top  + (bb.height - edH) / 2;
+  /* 뷰포트 클램프 */
+  left = Math.max(4, Math.min(left, window.innerWidth  - edW - 4));
+  top  = Math.max(4, Math.min(top,  window.innerHeight - edH - 4));
+
+  editor.style.left = left + 'px';
+  editor.style.top  = top  + 'px';
+  editor.value = currentChar || '';
+  editor.classList.add('visible');
+  try { editor.focus(); editor.select(); } catch (_) {}
+}
+
+/**
+ * 플로팅 편집기를 닫고 선택 하이라이트를 해제한다.
+ */
+function graphHideCellEditor() {
+  var editor = document.getElementById('graph-cell-editor');
+  if (editor) editor.classList.remove('visible');
+  graphHighlightCell(null);
+  graphSelectedCellId = null;
+}
+
+/**
+ * 현재 선택 셀에서 dir 방향(+1: 다음, -1: 이전)으로 선택을 이동한다.
+ * @param {number} dir
+ */
+function graphMoveSelection(dir) {
+  if (!graphSelectedCellId) return;
+  var allCells = [];
+  graphState.words.forEach(function(w) {
+    w.letters.forEach(function(l) { allCells.push(l.cellId); });
+  });
+  var idx = allCells.indexOf(graphSelectedCellId);
+  var nextIdx = idx + dir;
+  if (nextIdx < 0 || nextIdx >= allCells.length) {
+    graphHideCellEditor();
+    return;
+  }
+  var nextCellId = allCells[nextIdx];
+  var nextLetter = graphFindLetter(nextCellId);
+  if (!nextLetter) { graphHideCellEditor(); return; }
+
+  /* 캔버스 셀 rect를 기준으로 편집기 표시 (fallback: 단어 목록 슬롯) */
+  var canvasCellG = document.querySelector('svg.graph-canvas [data-cell-id="' + nextCellId + '"]');
+  var rectEl = canvasCellG ? canvasCellG.querySelector('rect') : null;
+  if (rectEl) {
+    graphShowCellEditor(rectEl, nextCellId, nextLetter.char);
+  } else {
+    var slot = document.querySelector('#graph-word-list [data-cell-id="' + nextCellId + '"]');
+    if (slot) graphShowCellEditor(slot, nextCellId, nextLetter.char);
+  }
+}
+
+/**
+ * 플로팅 편집기 이벤트 핸들러를 초기화한다.
+ * graphInit에서 한 번 호출.
+ */
+function graphInitCellEditor() {
+  var editor = document.getElementById('graph-cell-editor');
+  if (!editor) return;
+
+  var composing = false;
+
+  editor.addEventListener('compositionstart', function() { composing = true; });
+
+  editor.addEventListener('compositionend', function() {
+    composing = false;
+    var ch = kataToHira(editor.value.trim()).slice(0, 1);
+    if (graphSelectedCellId) {
+      graphCommitCellChar(graphSelectedCellId, ch);
+      editor.value = ch;
+      try { editor.select(); } catch (_) {}
+    }
+  });
+
+  editor.addEventListener('input', function() {
+    /* composing 게이트 제거: IME 합성 플래그가 끼어 입력이 커밋되지 않던 버그 수정.
+       마지막 글자만 유지하고 매 입력마다 커밋한다 (compositionend에서도 한 번 더 커밋). */
+    var val = kataToHira(editor.value);
+    if (val.length > 1) val = val.slice(-1);
+    if (graphSelectedCellId) {
+      graphCommitCellChar(graphSelectedCellId, val);
+      editor.value = val;
+    }
+  });
+
+  editor.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      graphHideCellEditor();
+    } else if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      if (graphSelectedCellId) {
+        graphCommitCellChar(graphSelectedCellId, '');
+        editor.value = '';
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      graphMoveSelection(1);
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      graphMoveSelection(e.shiftKey ? -1 : 1);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      graphMoveSelection(1);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      graphMoveSelection(-1);
+    }
+  });
+
+  /* blur 시 편집기 닫기 (setTimeout: 다른 셀 클릭 시 새 편집기가 먼저 열릴 수 있도록) */
+  editor.addEventListener('blur', function() {
+    setTimeout(function() {
+      /* 에디터가 다시 포커스 받지 않았으면 닫기 */
+      if (document.activeElement !== editor) {
+        graphHideCellEditor();
+      }
+    }, 0);
+  });
+
+  /* 편집기 외부 클릭 시 닫기 */
+  document.addEventListener('pointerdown', function(e) {
+    var editor = document.getElementById('graph-cell-editor');
+    if (editor && editor.classList.contains('visible') && e.target !== editor) {
+      /* SVG 셀이나 단어목록 슬롯 클릭은 해당 핸들러에서 다시 열 것이므로 여기서는 무조건 닫기 */
+      editor.classList.remove('visible');
+      graphHighlightCell(null);
+      /* graphSelectedCellId 는 graphShowCellEditor가 다시 설정함 */
+    }
+  }, true /* capture: 다른 핸들러보다 먼저 실행 */);
+}
+
+/* ================================================================
+   폼 이벤트 바인딩
+   ================================================================ */
+
+function graphInitForm() {
+  const addBtn = document.getElementById('graphAddWord');
+  const clearBtn = document.getElementById('graphClearAll');
+  const charCountInput = document.getElementById('graphCharCount');
+
+  /* 전각 숫자 입력 시 즉시 반각으로 정규화 */
+  if (charCountInput) {
+    charCountInput.addEventListener('input', function() {
+      const a = toAsciiDigits(charCountInput.value).replace(/[^0-9]/g, '');
+      if (a !== charCountInput.value) charCountInput.value = a;
+    });
+  }
+
+  if (addBtn && charCountInput) {
+    addBtn.addEventListener('click', function() {
+      const n = parseInt(toAsciiDigits(charCountInput.value), 10);
+      if (!graphValidateCharCount(n)) {
+        alert('글자 수는 1~12 사이의 정수를 입력하세요.');
+        return;
+      }
+      const newWords = graphAddWord(graphState.words, n);
+      if (newWords) {
+        graphState.words = newWords;
+        graphSaveState();
+        graphRender();
+      }
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function() {
+      if (!graphState.words.length) return;
+      if (!confirm('모든 단어와 규칙을 삭제하시겠습니까?')) return;
+      graphState = { words: [], rules: [], positions: {}, looseSmallLarge: graphState.looseSmallLarge };
+      graphSaveState();
+      graphRender();
+    });
+  }
+}
+
+/* ================================================================
+   규칙 엔진 (AC2~4): 음운 판정 · 오십음도 · 제약 전파 · 검증
+   ================================================================ */
+
+/* 오십음도 선형 시퀀스 — 기본 46자만 위치를 가진다 (탁/반탁/요/촉/장음 제외) */
+var GRAPH_GOJUON = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
+function gojuonNextChar(c){ var i = GRAPH_GOJUON.indexOf(c); return (i < 0 || i >= GRAPH_GOJUON.length - 1) ? null : GRAPH_GOJUON[i + 1]; }
+function gojuonPrevChar(c){ var i = GRAPH_GOJUON.indexOf(c); return (i <= 0) ? null : GRAPH_GOJUON[i - 1]; }
+
+/* 이로하(いろは) 순서 (고전 47자) — '다음 글자' 규칙의 대체 순서 */
+var GRAPH_IROHA = 'いろはにほへとちりぬるをわかよたれそつねならむうゐのおくやまけふこえてあさきゆめみしゑひもせす';
+function graphSeqStr(order){ return order === 'iroha' ? GRAPH_IROHA : GRAPH_GOJUON; }
+/** 시퀀스(order)에서 ch 로부터 step 칸 떨어진 글자. 범위를 벗어나거나 시퀀스에 없으면 null. */
+function seqStepChar(ch, order, step){
+  var s = graphSeqStr(order), i = s.indexOf(ch);
+  if (i < 0) return null;
+  var j = i + step;
+  return (j < 0 || j >= s.length) ? null : s[j];
+}
+
+/** 전각 숫자(０-９)를 반각(0-9)으로 정규화 — 일본어 자판의 전각 숫자 입력 지원 */
+function toAsciiDigits(s){
+  return String(s == null ? '' : s).replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+}
+
+/* 음운(자음·모음) 판정표 — 로마자 기준 (が=g, か=k 구분 등) */
+var GRAPH_PH = (function(){
+  var m = {}, V = ['a','i','u','e','o'];
+  function add(chars, c, vs){ for (var i = 0; i < chars.length; i++){ m[chars[i]] = { consonant: c, vowel: vs[i] }; } }
+  add('あいうえお', '',  V);
+  add('かきくけこ', 'k', V);
+  add('がぎぐげご', 'g', V);
+  add('さしすせそ', 's', V);
+  add('ざじずぜぞ', 'z', V);
+  add('たちつてと', 't', V);
+  add('だぢづでど', 'd', V);
+  add('なにぬねの', 'n', V);
+  add('はひふへほ', 'h', V);
+  add('ばびぶべぼ', 'b', V);
+  add('ぱぴぷぺぽ', 'p', V);
+  add('まみむめも', 'm', V);
+  add('やゆよ', 'y', ['a','u','o']);
+  add('らりるれろ', 'r', V);
+  add('わを', 'w', ['a','o']);
+  /* 발음 기준 자음 보정 */
+  m['し'] = { consonant: 'sh', vowel: 'i' };
+  m['ち'] = { consonant: 'ch', vowel: 'i' };
+  m['つ'] = { consonant: 'ts', vowel: 'u' };
+  m['ふ'] = { consonant: 'f',  vowel: 'u' };
+  m['じ'] = { consonant: 'j',  vowel: 'i' };
+  m['ぢ'] = { consonant: 'j',  vowel: 'i' };
+  m['づ'] = { consonant: 'z',  vowel: 'u' };
+  m['を'] = { consonant: 'w',  vowel: 'o' };
+  m['ん'] = { consonant: 'n',  vowel: null };  /* 모음 비교에서 제외 */
+  return m;
+})();
+var GRAPH_SMALL_V = { 'ゃ': 'a', 'ゅ': 'u', 'ょ': 'o' };
+
+/**
+ * 한 칸 글자의 음운을 판정한다.
+ * @returns {{consonant: (string|null), vowel: (string|null)}}
+ *   consonant/vowel 가 모두 null 이면 비교 불가(っ·ー 등) — excluded.
+ */
+function graphPhoneme(ch){
+  if (!ch) return { consonant: null, vowel: null };
+  /* 요음(きゃ 등): 기반 글자 자음 + 작은 글자 모음 */
+  if (ch.length === 2 && GRAPH_SMALL_V[ch[1]] !== undefined){
+    var base = GRAPH_PH[ch[0]];
+    return { consonant: base ? base.consonant : null, vowel: GRAPH_SMALL_V[ch[1]] };
+  }
+  var p = GRAPH_PH[ch];
+  return p ? { consonant: p.consonant, vowel: p.vowel } : { consonant: null, vowel: null };
+}
+
+/* 작은 글자(소문자 가나) ⇄ 큰 글자 매핑 */
+var GRAPH_SMALL_TO_LARGE = { 'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゃ':'や','ゅ':'ゆ','ょ':'よ','っ':'つ','ゎ':'わ' };
+var GRAPH_LARGE_TO_SMALL = (function(){ var m = {}; for (var k in GRAPH_SMALL_TO_LARGE) m[GRAPH_SMALL_TO_LARGE[k]] = k; return m; })();
+function graphIsSmall(ch){ return Object.prototype.hasOwnProperty.call(GRAPH_SMALL_TO_LARGE, ch); }
+function graphBaseChar(ch){ return GRAPH_SMALL_TO_LARGE[ch] || ch; }   /* 작은→큰, 그 외 자기 자신 */
+function graphSmallForm(ch){ return GRAPH_LARGE_TO_SMALL[ch] || ch; }  /* 큰→작은, 그 외(작은 포함) 자기 자신 */
+
+/* 규칙 종류 정의: 라벨 · 색 · 부류(값 생성/검증) · 방향성 */
+var GRAPH_RULE_DEFS = {
+  same_char:      { label: '같은 글자',         color: '#2563eb', ruleClass: 'derivation', directed: false },
+  same_vowel:     { label: '모음 같음',         color: '#16a34a', ruleClass: 'validation', directed: false },
+  same_consonant: { label: '자음 같음',         color: '#9333ea', ruleClass: 'validation', directed: false },
+  gojuon_next:    { label: '다음 글자',          color: '#ea580c', colorIroha: '#0d9488', ruleClass: 'derivation', directed: true },
+};
+
+/** 엔진 계산 결과 (저장하지 않음 — 매번 재계산) */
+var graphEngine = { value: {}, state: {}, conflict: {}, ruleViol: {} };
+
+/** cellId → {wordIndex, slotIndex} 존재 여부 확인용 셋 */
+function graphCellExists(cellId){
+  return graphFindLetter(cellId) !== null;
+}
+
+/**
+ * 제약 엔진 계산: 사용자 입력값으로부터 추론값·충돌·규칙 위반을 산출한다.
+ * - same_char: 동치 그룹(union-find) 추이적 전파, 그룹 내 사용자값 모순 시 충돌(빨강)
+ * - gojuon_next: 방향(앞→다음) next/prev 양방향 자동 채움 (종료 보장 고정점)
+ * - same_vowel/same_consonant: 검증 전용 — 위반 시 규칙 빨강 (비교불가 칸 제외)
+ */
+function graphComputeEngine(){
+  var userChar = {}, allCells = [];
+  graphState.words.forEach(function(w){
+    w.letters.forEach(function(l){
+      allCells.push(l.cellId);
+      if (l.source === 'user' && l.char) userChar[l.cellId] = l.char;
+    });
+  });
+  var value = {}, st = {}, conflict = {}, ruleViol = {};
+  allCells.forEach(function(c){ if (userChar[c]) { value[c] = userChar[c]; st[c] = 'user'; } else { st[c] = ''; } });
+
+  /* 유효한 규칙만 (양 끝 셀 존재) — 원본 인덱스(_idx) 보존 */
+  var rules = [];
+  graphState.rules.forEach(function(r, idx){
+    if (graphCellExists(r.sourceCell) && graphCellExists(r.targetCell)) {
+      rules.push({ sourceCell: r.sourceCell, targetCell: r.targetCell, ruleType: r.ruleType, order: r.order || 'gojuon', step: r.step || 1, _idx: idx });
+    }
+  });
+
+  /* 셀별 '작은 글자만' 속성 */
+  var cellSmallOnly = {};
+  graphState.words.forEach(function(w){ w.letters.forEach(function(l){ cellSmallOnly[l.cellId] = !!l.smallOnly; }); });
+
+  /* 전역 옵션: 작은⇄큰 같은 글자로 취급(켬) vs 엄격(정확히 동일, 끔) */
+  var loose = !!graphState.looseSmallLarge;
+  function graphKey(ch){ return loose ? graphBaseChar(ch) : ch; }
+
+  /* --- 같은 글자 동치 그룹 (union-find) --- */
+  var parent = {}; allCells.forEach(function(c){ parent[c] = c; });
+  function find(x){ while (parent[x] !== x){ parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+  function union(a, b){ var ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; }
+  rules.forEach(function(r){ if (r.ruleType === 'same_char') union(r.sourceCell, r.targetCell); });
+
+  /* 그룹별 사용자값의 키 모으기 (엄격=글자 그대로 / 작은⇄큰=기준 글자) */
+  var groupKeys = {};
+  allCells.forEach(function(c){
+    if (userChar[c]){ var root = find(c); (groupKeys[root] = groupKeys[root] || {})[graphKey(userChar[c])] = true; }
+  });
+  /* 전파(채움) 또는 충돌 표시 */
+  allCells.forEach(function(c){
+    var root = find(c), gk = groupKeys[root];
+    if (!gk) return;
+    var keys = Object.keys(gk);
+    if (keys.length > 1){
+      if (userChar[c]) conflict[c] = true;        /* 같은 그룹인데 글자가 다름 → 빨강 */
+    } else if (!userChar[c]){
+      var k = keys[0];
+      value[c] = cellSmallOnly[c] ? graphSmallForm(graphBaseChar(k)) : k;  /* 작은 글자만 칸이면 작은 형태로 */
+      st[c] = 'inferred';
+    }
+  });
+
+  /* --- gojuon_next 파생 (종료 보장 고정점 전파) --- */
+  for (var iter = 0; iter < 40; iter++){
+    var changed = false;
+    rules.forEach(function(r){
+      if (r.ruleType !== 'gojuon_next') return;
+      var s = r.sourceCell, t = r.targetCell;
+      if (value[s] !== undefined && value[t] === undefined){
+        var nx = seqStepChar(value[s], r.order, r.step);
+        if (nx !== null){ value[t] = nx; if (st[t] !== 'user') st[t] = 'inferred'; changed = true; }
+      } else if (value[t] !== undefined && value[s] === undefined){
+        var pv = seqStepChar(value[t], r.order, -r.step);
+        if (pv !== null){ value[s] = pv; if (st[s] !== 'user') st[s] = 'inferred'; changed = true; }
+      }
+    });
+    if (!changed) break;
+  }
+
+  /* --- 검증 패스 --- */
+  rules.forEach(function(r){
+    var s = r.sourceCell, t = r.targetCell, vs = value[s], vt = value[t];
+    if (vs === undefined || vt === undefined) return;
+    if (r.ruleType === 'same_char'){
+      if (loose ? graphBaseChar(vs) !== graphBaseChar(vt) : vs !== vt) ruleViol[r._idx] = true;
+    } else if (r.ruleType === 'same_vowel'){
+      var a = graphPhoneme(vs), b = graphPhoneme(vt);
+      if (a.vowel !== null && b.vowel !== null && a.vowel !== b.vowel) ruleViol[r._idx] = true;
+    } else if (r.ruleType === 'same_consonant'){
+      var a2 = graphPhoneme(vs), b2 = graphPhoneme(vt);
+      if (a2.consonant !== null && b2.consonant !== null && a2.consonant !== b2.consonant) ruleViol[r._idx] = true;
+    } else if (r.ruleType === 'gojuon_next'){
+      var nx2 = seqStepChar(vs, r.order, r.step);
+      if (nx2 === null || nx2 !== vt) ruleViol[r._idx] = true;
+    }
+  });
+
+  /* '작은 글자만' 칸에 작은 글자가 아닌 값 → 충돌(빨강) */
+  allCells.forEach(function(c){
+    if (cellSmallOnly[c] && value[c] && !graphIsSmall(value[c])) conflict[c] = true;
+  });
+
+  graphEngine = { value: value, state: st, conflict: conflict, ruleViol: ruleViol };
+}
+
+/* ----------------------------------------------------------------
+   셀 절대 좌표 + 규칙선(에지) 렌더링
+   ---------------------------------------------------------------- */
+function graphCellCenter(cellId){
+  var parts = String(cellId).split('-');
+  var wi = parseInt(parts[0], 10), si = parseInt(parts[1], 10);
+  var p = graphState.positions[wi] || graphState.positions[String(wi)];
+  if (!p) return null;
+  return {
+    x: p.x + GRAPH_BOX_PAD_X + si * (GRAPH_CELL_W + GRAPH_CELL_GAP) + GRAPH_CELL_W / 2,
+    y: p.y + GRAPH_BOX_PAD_TOP + GRAPH_CELL_H / 2
+  };
+}
+
+/** 셀 중심에서 다른 점을 향하는 방향으로, 셀 경계 위의 점을 구한다 (중심은 클릭/입력용으로 비워둠). */
+function graphCellEdgePoint(cellId, towardX, towardY){
+  var c = graphCellCenter(cellId);
+  if (!c) return null;
+  var hw = GRAPH_CELL_W / 2, hh = GRAPH_CELL_H / 2;
+  var dx = towardX - c.x, dy = towardY - c.y;
+  if (dx === 0 && dy === 0) return c;
+  var sx = dx !== 0 ? hw / Math.abs(dx) : Infinity;
+  var sy = dy !== 0 ? hh / Math.abs(dy) : Infinity;
+  var s = Math.min(sx, sy);
+  return { x: c.x + dx * s, y: c.y + dy * s };
+}
+
+var graphSelectedRuleIdx = null;
+
+/** SVG 캔버스에 규칙선을 그린다 (박스 위에 오버레이). */
+function graphRenderEdges(){
+  var svg = document.querySelector('svg.graph-canvas');
+  if (!svg) return;
+  /* 기존 에지 제거 (중복 방지 — 단독 호출 가능) */
+  svg.querySelectorAll('g.graph-edge').forEach(function(g){ g.remove(); });
+  /* arrowhead marker (gojuon_next 방향용) 1회 정의 */
+  if (!svg.querySelector('defs#graph-defs')){
+    var defs = document.createElementNS(NS, 'defs');
+    defs.setAttribute('id', 'graph-defs');
+    ['#ea580c', '#ef4444', '#0d9488'].forEach(function(col){
+      var mk = document.createElementNS(NS, 'marker');
+      mk.setAttribute('id', 'graph-arrow-' + col.replace('#', ''));
+      mk.setAttribute('viewBox', '0 0 10 10'); mk.setAttribute('refX', '9'); mk.setAttribute('refY', '5');
+      mk.setAttribute('markerWidth', '6'); mk.setAttribute('markerHeight', '6'); mk.setAttribute('orient', 'auto-start-reverse');
+      var pth = document.createElementNS(NS, 'path');
+      pth.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); pth.setAttribute('fill', col);
+      mk.appendChild(pth); defs.appendChild(mk);
+    });
+    svg.insertBefore(defs, svg.firstChild);
+  }
+  graphState.rules.forEach(function(r, ri){
+    var ca = graphCellCenter(r.sourceCell), cb = graphCellCenter(r.targetCell);
+    if (!ca || !cb) return;
+    var def = GRAPH_RULE_DEFS[r.ruleType] || { color: '#888', directed: false };
+    var viol = !!graphEngine.ruleViol[ri];
+    var isSeq = (r.ruleType === 'gojuon_next');
+    var baseCol = (isSeq && r.order === 'iroha') ? (def.colorIroha || def.color) : def.color;
+    var col = viol ? '#ef4444' : baseCol;
+    var sameWord = (String(r.sourceCell).split('-')[0] === String(r.targetCell).split('-')[0]);
+
+    var d, labelX, labelY;
+    if (sameWord){
+      /* 같은 단어 내: 글자를 가로지르지 않도록 셀 위로 곡선(arc)으로 우회 */
+      var aT = { x: ca.x, y: ca.y - GRAPH_CELL_H / 2 };
+      var bT = { x: cb.x, y: cb.y - GRAPH_CELL_H / 2 };
+      var midX = (aT.x + bT.x) / 2;
+      var span = Math.abs(bT.x - aT.x);
+      var bow = Math.min(70, 20 + span * 0.4);
+      var ctrlY = Math.min(aT.y, bT.y) - bow;
+      d = 'M ' + aT.x + ' ' + aT.y + ' Q ' + midX + ' ' + ctrlY + ' ' + bT.x + ' ' + bT.y;
+      labelX = midX; labelY = ctrlY + bow * 0.45;
+    } else {
+      /* 단어 간: 셀 경계 앵커 직선 (중심은 클릭/입력용으로 비움) */
+      var a = graphCellEdgePoint(r.sourceCell, cb.x, cb.y);
+      var b = graphCellEdgePoint(r.targetCell, ca.x, ca.y);
+      d = 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y;
+      labelX = (a.x + b.x) / 2; labelY = (a.y + b.y) / 2 - 7;
+    }
+
+    var g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'graph-edge' + (graphSelectedRuleIdx === ri ? ' sel' : ''));
+    g.setAttribute('data-rule-idx', String(ri));
+    /* 넓은 투명 히트 영역 (클릭/터치 쉽게) */
+    var hit = document.createElementNS(NS, 'path');
+    hit.setAttribute('d', d); hit.setAttribute('fill', 'none');
+    hit.setAttribute('stroke', 'transparent'); hit.setAttribute('stroke-width', '14'); hit.setAttribute('cursor', 'pointer');
+    g.appendChild(hit);
+    /* 보이는 선 */
+    var ln = document.createElementNS(NS, 'path');
+    ln.setAttribute('d', d); ln.setAttribute('fill', 'none');
+    ln.setAttribute('stroke', col);
+    ln.setAttribute('stroke-width', graphSelectedRuleIdx === ri ? '4' : '2.5');
+    ln.setAttribute('stroke-linecap', 'round');
+    if (viol) ln.setAttribute('stroke-dasharray', '6 4');
+    else if (r.ruleType === 'same_char' && graphState.looseSmallLarge) ln.setAttribute('stroke-dasharray', '5 3'); /* 작은⇄큰 모드: 점선 */
+    ln.setAttribute('pointer-events', 'none');
+    if (def.directed) ln.setAttribute('marker-end', 'url(#graph-arrow-' + col.replace('#', '') + ')');
+    g.appendChild(ln);
+    /* 시퀀스 규칙 라벨: 이로하거나 step>1 일 때 "い+N" / "+N" 표시 */
+    if (isSeq && (r.order === 'iroha' || (r.step || 1) > 1)){
+      var txt = (r.order === 'iroha' ? 'い' : '') + '+' + (r.step || 1);
+      var lw = 9 + txt.length * 6;
+      var bg = document.createElementNS(NS, 'rect');
+      bg.setAttribute('x', labelX - lw / 2); bg.setAttribute('y', labelY - 9);
+      bg.setAttribute('width', lw); bg.setAttribute('height', '16'); bg.setAttribute('rx', '4');
+      bg.setAttribute('fill', 'var(--panel)'); bg.setAttribute('stroke', col); bg.setAttribute('stroke-width', '1');
+      bg.setAttribute('pointer-events', 'none');
+      g.appendChild(bg);
+      var tx = document.createElementNS(NS, 'text');
+      tx.setAttribute('x', labelX); tx.setAttribute('y', labelY + 2.5);
+      tx.setAttribute('text-anchor', 'middle'); tx.setAttribute('font-size', '10'); tx.setAttribute('font-weight', '700');
+      tx.setAttribute('fill', col); tx.setAttribute('font-family', 'var(--jp)'); tx.setAttribute('pointer-events', 'none');
+      tx.textContent = txt;
+      g.appendChild(tx);
+    }
+    g.addEventListener('click', function(e){ e.stopPropagation(); graphSelectRule(ri, e.clientX, e.clientY); });
+    svg.appendChild(g);
+  });
+}
+
+/** 엔진 결과(추론값·충돌)를 렌더된 셀/슬롯에 반영한다. */
+function graphApplyEngineVisuals(){
+  var val = graphEngine.value, st = graphEngine.state, conf = graphEngine.conflict;
+  graphState.words.forEach(function(w){ w.letters.forEach(function(l){
+    var cid = l.cellId, v = val[cid] || '', s = st[cid] || '', isConf = !!conf[cid];
+    var cellG = document.querySelector('svg.graph-canvas [data-cell-id="' + cid + '"]');
+    if (cellG){
+      var rect = cellG.querySelector('rect'), txt = null;
+      txt = cellG.querySelector('text.graph-cell-char');
+      if (txt){
+        txt.textContent = v;
+        txt.setAttribute('fill', isConf ? '#ef4444' : (s === 'inferred' ? 'var(--muted)' : 'var(--text)'));
+        txt.setAttribute('font-style', s === 'inferred' ? 'italic' : 'normal');
+      }
+      if (rect){
+        if (isConf){ rect.setAttribute('stroke', '#ef4444'); rect.setAttribute('stroke-width', '2.5'); rect.setAttribute('fill', 'rgba(239,68,68,.14)'); }
+        else { rect.setAttribute('stroke', 'var(--border)'); rect.setAttribute('stroke-width', '1.5'); rect.setAttribute('fill', s === 'inferred' ? 'rgba(245,158,11,.10)' : 'var(--panel-2)'); }
+      }
+    }
+    var slot = document.querySelector('#graph-word-list [data-cell-id="' + cid + '"]');
+    if (slot){
+      slot.textContent = v || '_';
+      slot.classList.toggle('filled', !!v);
+      slot.classList.toggle('graph-inferred', s === 'inferred');
+      slot.classList.toggle('graph-conflict', isConf);
+    }
+  }); });
+}
+
+/* ----------------------------------------------------------------
+   규칙 연결 모드 (드래그로 셀→셀 잇기) + 규칙 종류 메뉴
+   ---------------------------------------------------------------- */
+var graphConnectMode = false;
+
+function graphCellIdFromPoint(clientX, clientY){
+  var el = document.elementFromPoint(clientX, clientY);
+  while (el && el !== document.body){
+    if (el.getAttribute && el.getAttribute('data-cell-id')) return el.getAttribute('data-cell-id');
+    el = el.parentElement || el.parentNode;
+  }
+  return null;
+}
+
+function graphInitConnect(){
+  var wrap = document.getElementById('graph-canvas-wrap');
+  if (!wrap) return;
+  var drawing = false, srcCell = null, tempLine = null;
+
+  function svgPt(svg, clientX, clientY){
+    var bb = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+    return { x: (clientX - bb.left) * (vb.width / (bb.width || 1)), y: (clientY - bb.top) * (vb.height / (bb.height || 1)) };
+  }
+  wrap.addEventListener('pointerdown', function(e){
+    if (!graphConnectMode || e.button === 2) return;
+    var cid = graphCellIdFromPoint(e.clientX, e.clientY);
+    if (!cid) return;
+    e.preventDefault(); e.stopPropagation();   /* 박스 드래그/편집기 방지 */
+    var svg = wrap.querySelector('svg.graph-canvas'); if (!svg) return;
+    drawing = true; srcCell = cid;
+    var c = graphCellCenter(cid);
+    tempLine = document.createElementNS(NS, 'line');
+    tempLine.setAttribute('x1', c.x); tempLine.setAttribute('y1', c.y);
+    tempLine.setAttribute('x2', c.x); tempLine.setAttribute('y2', c.y);
+    tempLine.setAttribute('stroke', 'var(--accent)'); tempLine.setAttribute('stroke-width', '2.5');
+    tempLine.setAttribute('stroke-dasharray', '5 4'); tempLine.setAttribute('pointer-events', 'none');
+    svg.appendChild(tempLine);
+  }, true);
+  wrap.addEventListener('pointermove', function(e){
+    if (!drawing || !tempLine) return;
+    var svg = wrap.querySelector('svg.graph-canvas'); if (!svg) return;
+    var p = svgPt(svg, e.clientX, e.clientY);
+    tempLine.setAttribute('x2', p.x); tempLine.setAttribute('y2', p.y);
+  }, true);
+  function finish(e){
+    if (!drawing) return;
+    drawing = false;
+    if (tempLine && tempLine.parentNode) tempLine.parentNode.removeChild(tempLine);
+    tempLine = null;
+    var tgt = graphCellIdFromPoint(e.clientX, e.clientY);
+    var src = srcCell; srcCell = null;
+    if (tgt && src && tgt !== src) graphOpenRuleMenu(src, tgt, e.clientX, e.clientY);
+  }
+  wrap.addEventListener('pointerup', finish, true);
+  wrap.addEventListener('pointercancel', function(){ drawing = false; if (tempLine && tempLine.parentNode) tempLine.parentNode.removeChild(tempLine); tempLine = null; srcCell = null; }, true);
+  /* 우클릭(데스크톱) → 셀 컨텍스트 메뉴 (작은 글자만 토글). 셀 위에서만 기본 메뉴 차단 */
+  wrap.addEventListener('contextmenu', function(e){
+    var cid = graphCellIdFromPoint(e.clientX, e.clientY);
+    if (cid){ e.preventDefault(); graphOpenCellMenu(cid, e.clientX, e.clientY); }
+  });
+}
+
+function graphCreateRule(sourceCell, targetCell, ruleType, opts){
+  var def = GRAPH_RULE_DEFS[ruleType];
+  opts = opts || {};
+  var order = opts.order || 'gojuon', step = Math.max(1, parseInt(opts.step, 10) || 1);
+  /* 중복 방지: 무방향은 양쪽 순서 무시, 방향 규칙은 순서·칸수까지 동일할 때만 중복 */
+  var exists = graphState.rules.some(function(r){
+    if (r.ruleType !== ruleType) return false;
+    if (def.directed) return r.sourceCell === sourceCell && r.targetCell === targetCell && (r.order || 'gojuon') === order && (r.step || 1) === step;
+    return (r.sourceCell === sourceCell && r.targetCell === targetCell) || (r.sourceCell === targetCell && r.targetCell === sourceCell);
+  });
+  if (exists) return;
+  var rule = {
+    sourceCell: sourceCell, targetCell: targetCell, ruleType: ruleType,
+    ruleClass: def.ruleClass, ruleDirection: def.directed ? 'source_to_target' : null
+  };
+  if (def.directed){ rule.order = order; rule.step = step; }
+  graphState.rules.push(rule);
+  graphSaveState();
+  graphRender();
+}
+
+function graphOpenRuleMenu(sourceCell, targetCell, clientX, clientY){
+  var menu = document.getElementById('graph-rule-menu');
+  if (!menu) return;
+  menu.innerHTML = '';
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:11px; color:var(--muted); padding:2px 8px 6px';
+  title.textContent = sourceCell + ' → ' + targetCell;
+  menu.appendChild(title);
+  /* 단순 규칙 3종 (한 번 클릭) */
+  ['same_char', 'same_vowel', 'same_consonant'].forEach(function(rt){
+    var def = GRAPH_RULE_DEFS[rt];
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'graph-rule-menu-item';
+    btn.innerHTML = '<span class="graph-rule-swatch" style="background:' + def.color + '"></span>' + def.label;
+    btn.addEventListener('click', function(){ graphCreateRule(sourceCell, targetCell, rt); graphCloseRuleMenu(); });
+    menu.appendChild(btn);
+  });
+  /* 구분선 */
+  var hr = document.createElement('div');
+  hr.style.cssText = 'border-top:1px solid var(--border); margin:5px 4px';
+  menu.appendChild(hr);
+  /* 다음 글자(시퀀스) — 순서 + 칸수 서브폼 */
+  var seqBox = document.createElement('div');
+  seqBox.style.cssText = 'padding:4px 8px 6px';
+  var seqLbl = document.createElement('div');
+  seqLbl.style.cssText = 'display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:6px';
+  seqLbl.innerHTML = '<span class="graph-rule-swatch" style="background:' + GRAPH_RULE_DEFS.gojuon_next.color + '"></span>다음 글자';
+  seqBox.appendChild(seqLbl);
+  var orderState = { value: 'gojuon' };
+  var orderRow = document.createElement('div');
+  orderRow.style.cssText = 'display:flex; gap:4px; margin-bottom:6px';
+  [['gojuon', '오십음도'], ['iroha', '이로하']].forEach(function(o){
+    var ob = document.createElement('button');
+    ob.type = 'button'; ob.textContent = o[1];
+    ob.style.cssText = 'flex:1; font:inherit; font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:5px; cursor:pointer; color:var(--text); background:' + (o[0] === 'gojuon' ? 'var(--accent-soft)' : 'var(--panel-2)');
+    ob.addEventListener('click', function(){
+      orderState.value = o[0];
+      orderRow.querySelectorAll('button').forEach(function(x){ x.style.background = 'var(--panel-2)'; });
+      ob.style.background = 'var(--accent-soft)';
+    });
+    orderRow.appendChild(ob);
+  });
+  seqBox.appendChild(orderRow);
+  var stepRow = document.createElement('div');
+  stepRow.style.cssText = 'display:flex; gap:6px; align-items:center';
+  var stepLab = document.createElement('span'); stepLab.textContent = '칸수'; stepLab.style.cssText = 'font-size:12px; color:var(--muted)';
+  var stepInp = document.createElement('input');
+  stepInp.type = 'text'; stepInp.inputMode = 'numeric'; stepInp.maxLength = 2; stepInp.value = '1';
+  stepInp.style.cssText = 'width:46px; font:inherit; font-size:13px; padding:3px 5px; border:1px solid var(--border); border-radius:5px; background:var(--panel-2); color:var(--text)';
+  stepInp.addEventListener('input', function(){ var a = toAsciiDigits(stepInp.value).replace(/[^0-9]/g, ''); if (a !== stepInp.value) stepInp.value = a; });
+  var addBtn = document.createElement('button');
+  addBtn.type = 'button'; addBtn.textContent = '추가'; addBtn.className = 'btn';
+  addBtn.style.cssText = 'flex:1; font-size:12px; padding:4px 6px';
+  addBtn.addEventListener('click', function(){
+    var step = Math.max(1, parseInt(toAsciiDigits(stepInp.value), 10) || 1);
+    graphCreateRule(sourceCell, targetCell, 'gojuon_next', { order: orderState.value, step: step });
+    graphCloseRuleMenu();
+  });
+  stepRow.appendChild(stepLab); stepRow.appendChild(stepInp); stepRow.appendChild(addBtn);
+  seqBox.appendChild(stepRow);
+  menu.appendChild(seqBox);
+  var cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'graph-rule-menu-item'; cancel.style.color = 'var(--muted)';
+  cancel.textContent = '취소';
+  cancel.addEventListener('click', graphCloseRuleMenu);
+  menu.appendChild(cancel);
+
+  menu.style.display = 'block';
+  var mw = menu.offsetWidth || 180, mh = menu.offsetHeight || 200;
+  menu.style.left = Math.max(4, Math.min(clientX, window.innerWidth - mw - 4)) + 'px';
+  menu.style.top = Math.max(4, Math.min(clientY, window.innerHeight - mh - 4)) + 'px';
+}
+function graphCloseRuleMenu(){ var m = document.getElementById('graph-rule-menu'); if (m) m.style.display = 'none'; }
+
+/* ----------------------------------------------------------------
+   셀 컨텍스트 메뉴 ('작은 글자만' 칸 토글) — 우클릭 / 길게 누르기
+   ---------------------------------------------------------------- */
+function graphCloseCellMenu(){ var m = document.getElementById('graph-cell-menu'); if (m) m.style.display = 'none'; }
+function graphToggleSmallOnly(cellId){
+  graphState.words = graphState.words.map(function(w){
+    return { index: w.index, charCount: w.charCount, letters: w.letters.map(function(l){
+      if (l.cellId !== cellId) return l;
+      var on = !l.smallOnly;
+      var nl = Object.assign({}, l, { smallOnly: on });
+      if (on && nl.char) nl.char = graphSmallForm(nl.char);  /* 켤 때 기존 글자를 작은 형태로 변환 */
+      return nl;
+    }) };
+  });
+  graphSaveState();
+  graphRender();
+}
+function graphOpenCellMenu(cellId, clientX, clientY){
+  var menu = document.getElementById('graph-cell-menu');
+  var letter = graphFindLetter(cellId);
+  if (!menu || !letter) return;
+  graphCloseRuleMenu();
+  menu.innerHTML = '';
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:11px; color:var(--muted); padding:2px 8px 6px';
+  title.textContent = '칸 ' + cellId;
+  menu.appendChild(title);
+  var toggle = document.createElement('button');
+  toggle.type = 'button'; toggle.className = 'graph-rule-menu-item';
+  toggle.innerHTML = (letter.smallOnly ? '☑' : '☐') + ' 작은 글자만 칸 (ぁぃぅゃっ…)';
+  toggle.addEventListener('click', function(){ graphToggleSmallOnly(cellId); graphCloseCellMenu(); });
+  menu.appendChild(toggle);
+  var cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'graph-rule-menu-item'; cancel.style.color = 'var(--muted)';
+  cancel.textContent = '취소';
+  cancel.addEventListener('click', graphCloseCellMenu);
+  menu.appendChild(cancel);
+  menu.style.display = 'block';
+  var mw = menu.offsetWidth || 210, mh = menu.offsetHeight || 110;
+  menu.style.left = Math.max(4, Math.min(clientX, window.innerWidth - mw - 4)) + 'px';
+  menu.style.top = Math.max(4, Math.min(clientY, window.innerHeight - mh - 4)) + 'px';
+}
+
+/* ----------------------------------------------------------------
+   규칙선 선택 · 삭제
+   ---------------------------------------------------------------- */
+/** 규칙 인스턴스의 사람용 라벨 (종류 + 순서/칸수) */
+function graphRuleLabel(r){
+  if (!r) return '';
+  if (r.ruleType === 'same_char') return graphState.looseSmallLarge ? '같은 글자 (작은⇄큰)' : '같은 글자';
+  if (r.ruleType === 'same_vowel') return '모음 같음';
+  if (r.ruleType === 'same_consonant') return '자음 같음';
+  if (r.ruleType === 'gojuon_next') return (r.order === 'iroha' ? '이로하' : '오십음도') + ' 다음' + ((r.step || 1) > 1 ? ' +' + r.step : '');
+  return r.ruleType;
+}
+
+/** 색상↔규칙 범례 렌더 (다음 글자=화살표, 작은⇄큰 모드면 같은 글자=점선) */
+function graphRenderLegend(){
+  var el = document.getElementById('graph-legend');
+  if (!el) return;
+  function lineSwatch(color, dash, arrow){
+    return '<svg width="36" height="12" style="flex-shrink:0">' +
+      '<line x1="2" y1="6" x2="' + (arrow ? 27 : 34) + '" y2="6" stroke="' + color + '" stroke-width="2.5" stroke-linecap="round"' + (dash ? ' stroke-dasharray="5 3"' : '') + '/>' +
+      (arrow ? '<path d="M27 2 L34 6 L27 10 z" fill="' + color + '"/>' : '') + '</svg>';
+  }
+  function item(swatch, label){
+    return '<span style="display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--muted); margin-right:14px">' + swatch + '<span>' + label + '</span></span>';
+  }
+  var loose = !!graphState.looseSmallLarge;
+  el.innerHTML =
+    item(lineSwatch('#2563eb', loose, false), '같은 글자' + (loose ? ' (작은⇄큰)' : '')) +
+    item(lineSwatch('#16a34a', false, false), '모음 같음') +
+    item(lineSwatch('#9333ea', false, false), '자음 같음') +
+    item(lineSwatch('#ea580c', false, true), '오십음도 다음') +
+    item(lineSwatch('#0d9488', false, true), '이로하 다음') +
+    item(lineSwatch('#ef4444', true, false), '규칙 위반') +
+    item('<span style="display:inline-block; width:18px; height:13px; border:1.5px dashed #0ea5e9; border-radius:3px"></span>', '작은 글자만 칸 (小)');
+}
+
+function graphSelectRule(ri, clientX, clientY){
+  graphSelectedRuleIdx = ri;
+  graphRender();
+  var pop = document.getElementById('graph-edge-pop');
+  if (pop){
+    var lbl = document.getElementById('graph-edge-label');
+    var r = graphState.rules[ri];
+    if (lbl && r){
+      var viol = !!graphEngine.ruleViol[ri];
+      var col = viol ? '#ef4444'
+        : (r.ruleType === 'gojuon_next' && r.order === 'iroha') ? GRAPH_RULE_DEFS.gojuon_next.colorIroha
+        : ((GRAPH_RULE_DEFS[r.ruleType] || {}).color || '#888');
+      lbl.innerHTML = '<span class="graph-rule-swatch" style="background:' + col + '"></span>' + graphRuleLabel(r) + (viol ? ' · ⚠️ 위반' : '');
+    }
+    pop.style.display = 'flex';
+    var pw = pop.offsetWidth || 120;
+    pop.style.left = Math.max(4, Math.min(clientX, window.innerWidth - pw - 4)) + 'px';
+    pop.style.top = Math.max(4, (clientY - 52)) + 'px';
+  }
+}
+function graphDeleteSelectedRule(){
+  if (graphSelectedRuleIdx === null) return;
+  graphState.rules.splice(graphSelectedRuleIdx, 1);
+  graphSelectedRuleIdx = null;
+  var pop = document.getElementById('graph-edge-pop'); if (pop) pop.style.display = 'none';
+  graphSaveState();
+  graphRender();
+}
+function graphClearRuleSelection(){
+  if (graphSelectedRuleIdx === null) return;
+  graphSelectedRuleIdx = null;
+  var pop = document.getElementById('graph-edge-pop'); if (pop) pop.style.display = 'none';
+  graphRender();
+}
+
+function graphInit() {
+  graphLoadState();
+  graphInitForm();
+  graphInitConnect();     /* AC2: 규칙 연결 모드 */
+  graphInitCellEditor();  /* Sub-AC 5: 셀 편집기 초기화 */
+
+  /* 규칙 연결 모드 토글 */
+  var connectBtn = document.getElementById('graphConnectToggle');
+  var connectHint = document.getElementById('graphConnectHint');
+  var canvasWrap = document.getElementById('graph-canvas-wrap');
+  if (connectBtn) {
+    connectBtn.addEventListener('click', function() {
+      graphConnectMode = !graphConnectMode;
+      connectBtn.classList.toggle('on', graphConnectMode);
+      connectBtn.setAttribute('aria-pressed', String(graphConnectMode));
+      connectBtn.textContent = graphConnectMode ? '🔗 규칙 연결: 켬' : '🔗 규칙 연결: 끔';
+      if (connectHint) connectHint.style.display = graphConnectMode ? '' : 'none';
+      if (canvasWrap) canvasWrap.classList.toggle('connect-mode', graphConnectMode);
+      graphCloseRuleMenu(); graphClearRuleSelection();
+    });
+  }
+
+  /* 작은⇄큰 같은 글자 전역 토글 */
+  var looseBtn = document.getElementById('graphLooseToggle');
+  if (looseBtn) {
+    var syncLoose = function() {
+      looseBtn.classList.toggle('on', !!graphState.looseSmallLarge);
+      looseBtn.setAttribute('aria-pressed', String(!!graphState.looseSmallLarge));
+      looseBtn.textContent = '작은⇄큰 같은 글자: ' + (graphState.looseSmallLarge ? '켬' : '끔');
+    };
+    syncLoose();
+    looseBtn.addEventListener('click', function() {
+      graphState.looseSmallLarge = !graphState.looseSmallLarge;
+      graphSaveState();
+      syncLoose();
+      graphRender();
+    });
+  }
+
+  /* 규칙선 삭제 팝업 버튼 */
+  var edgeDelBtn = document.getElementById('graph-edge-del');
+  if (edgeDelBtn) edgeDelBtn.addEventListener('click', function(e) { e.stopPropagation(); graphDeleteSelectedRule(); });
+
+  /* 바깥 클릭 시 메뉴/규칙선 선택 닫기 */
+  document.addEventListener('pointerdown', function(e) {
+    var t = e.target;
+    if (!(t.closest && t.closest('#graph-rule-menu'))) graphCloseRuleMenu();
+    if (!(t.closest && t.closest('#graph-cell-menu'))) graphCloseCellMenu();
+    if (!(t.closest && (t.closest('#graph-edge-pop') || t.closest('.graph-edge')))) graphClearRuleSelection();
+  });
+
+  /* Delete/Backspace 로 선택된 규칙선 삭제 (입력 중이 아닐 때) */
+  document.addEventListener('keydown', function(e) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && graphSelectedRuleIdx !== null) {
+      var t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      e.preventDefault();
+      graphDeleteSelectedRule();
+    }
+  });
+}
+
 /* ---------- init ---------- */
 function init(){
   document.body.classList.toggle('detail-view', state.detail);
@@ -1093,6 +2939,7 @@ function init(){
   [els.kanaToggle, els.kanaToggleAll, els.kanaToggleGal].forEach(c => { if (c) c.checked = state.kanaFirst; });
   setMode(state.mode);   // also builds len filter + renders search
   refreshStrikeUI();
+  graphInit();           // 규칙 그래프 탭 초기화 (상태 로드 + 단위 테스트 자동 실행)
   setTab('search');
 }
 init();
