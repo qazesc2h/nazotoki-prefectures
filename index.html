@@ -347,6 +347,59 @@
     width: 28px; height: 28px; cursor: pointer; flex-shrink: 0;
   }
   .baba-del:hover { border-color: var(--accent); color: var(--text); }
+
+  /* ---- しりとり (시리토리 / 끝말잇기) ---- */
+  .shiri-opts { padding: 10px 14px; gap: 8px 18px; align-items: center; }
+  .shiri-opts > label.checkbox { margin: 0; }
+  .shiri-result { padding: 16px; margin-bottom: 12px; }
+  .shiri-chain { display: flex; flex-wrap: wrap; gap: 6px 3px; align-items: center; min-height: 38px; }
+  .shiri-chip {
+    display: inline-flex; align-items: baseline; gap: 5px; padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--accent); background: var(--accent-soft); font-weight: 700; font-size: 15px;
+  }
+  .shiri-chip .ci { font-size: 11px; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .shiri-arrow { display: inline-flex; flex-direction: column; align-items: center; color: var(--accent); font-weight: 700; line-height: 1; padding: 0 1px; }
+  .shiri-arrow .lk { font-size: 10px; color: var(--muted); font-weight: 600; margin-bottom: 1px; }
+  .shiri-empty { color: var(--muted); font-size: 13px; }
+
+  .shiri-legend { display: flex; flex-wrap: wrap; gap: 5px 16px; font-size: 12px; color: var(--muted); padding: 4px 2px 10px; align-items: center; }
+  .shiri-legend .ln { display: inline-block; width: 22px; border-top: 3px solid var(--muted); margin-right: 6px; vertical-align: middle; }
+  .shiri-legend .ln.chain { border-top-color: var(--accent); }
+  .shiri-legend .ln.cyc { border-top-color: #8b5cf6; }
+  .shiri-legend .ln.dead { border-top: 0; border-bottom: 2px dashed #ef4444; width: 16px; }
+
+  #shiri-canvas-wrap { overflow: auto; padding: 0; min-height: 220px; position: relative; }
+  svg.shiri-canvas { display: block; min-width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .shiri-edge { fill: none; stroke: var(--muted); stroke-width: 1.4; opacity: .4; pointer-events: none; }
+  .shiri-edge.chain { stroke: var(--accent); stroke-width: 2.6; opacity: 1; }
+  .shiri-edge.cyc { stroke: #8b5cf6; stroke-width: 2; opacity: .9; }
+  .shiri-edge.hl { stroke: var(--accent); opacity: .95; stroke-width: 2; }
+  .shiri-edge-label { font-family: var(--jp); font-size: 11px; fill: var(--accent); font-weight: 700; pointer-events: none; }
+  #shiri-mk path { fill: var(--muted); }
+  #shiri-mk-chain path { fill: var(--accent); }
+  #shiri-mk-cyc path { fill: #8b5cf6; }
+  .shiri-node { cursor: grab; }
+  .shiri-node-rect { fill: var(--panel); stroke: var(--border); stroke-width: 1.5; }
+  .shiri-node.cyc .shiri-node-rect { stroke: #8b5cf6; }
+  .shiri-node.chain .shiri-node-rect { stroke: var(--accent); stroke-width: 2.5; fill: var(--accent-soft); }
+  .shiri-node.dead .shiri-node-rect { stroke: #ef4444; stroke-dasharray: 5 3; }
+  .shiri-node.iso .shiri-node-rect { stroke-dasharray: 2 3; opacity: .75; }
+  .shiri-node-text { font-family: var(--jp); fill: var(--text); }
+  .shiri-node.dead .shiri-node-text { fill: #ef4444; }
+
+  .shiri-word { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .shiri-word:last-child { border-bottom: 0; }
+  #shiri-list { padding: 2px 14px; }
+  #shiri-list .empty { padding: 22px; }
+  .shiri-wlabel { font-size: 12px; font-weight: 700; color: var(--muted); min-width: 30px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .shiri-wword { font-size: 16px; font-weight: 700; }
+  .shiri-wmeta { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .shiri-wmeta b { color: var(--text); font-weight: 700; }
+  .shiri-badge { font-size: 11px; padding: 1px 7px; border-radius: 6px; font-weight: 700; line-height: 1.5; }
+  .shiri-badge.dead { color: #ef4444; border: 1px solid #ef4444; }
+  .shiri-badge.iso { color: var(--muted); border: 1px solid var(--border); }
+  .shiri-badge.cyc { color: #8b5cf6; border: 1px solid #8b5cf6; }
+  .shiri-word .spacer { flex: 1 1 auto; }
 </style>
 </head>
 <body>
@@ -364,6 +417,7 @@
         <button data-mode="cap">현청소재지</button>
         <button data-view="graph">규칙 그래프</button>
         <button data-view="babanuki">바바누키</button>
+        <button data-view="shiritori">시리토리</button>
       </div>
     </div>
     <div class="strike-status hidden" id="strikeStatus">
@@ -525,6 +579,7 @@
         <label class="checkbox"><input type="checkbox" id="baba-opt-kata" /> カ=か (가나 통일)</label>
         <label class="checkbox"><input type="checkbox" id="baba-opt-small" /> 작은⇄큰 같은 글자</label>
         <label class="checkbox"><input type="checkbox" id="baba-opt-dia" /> 탁점·반탁점 무시</label>
+        <label class="checkbox"><input type="checkbox" id="baba-opt-case" /> Aa (영문 대소문자 무시)</label>
       </div>
     </div>
 
@@ -542,6 +597,60 @@
       <button class="btn" id="baba-clear" type="button">목록 비우기</button>
     </div>
     <div class="panel" id="baba-list"></div>
+  </section>
+
+  <!-- SHIRITORI TAB (しりとり / 끝말잇기) -->
+  <section id="tab-shiritori" class="hidden">
+    <div class="panel controls">
+      <div class="field grow">
+        <label for="shiri-input">단어 입력</label>
+        <input type="text" id="shiri-input" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="예: りんご ごりら らっぱ / apple elephant tiger" />
+        <p class="hint">엔터 또는 <code>＋추가</code>. 띄어쓰기·쉼표·줄바꿈으로 여러 단어를 한 번에. <b>앞 단어의 끝글자 = 뒤 단어의 첫글자</b>로 이어집니다. 가타카나·<b>영어</b> 모두 가능(영어는 대소문자 무시).</p>
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <button class="btn" id="shiri-add" type="button">＋ 추가</button>
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <button class="btn" id="shiri-arrange" type="button" title="드래그로 옮긴 노드 위치를 초기화하고 자동 배치로 되돌립니다">자동 정렬</button>
+      </div>
+    </div>
+
+    <div class="panel controls shiri-opts">
+      <span class="field" style="gap:0"><label style="margin:0">잇기 규칙</label></span>
+      <label class="checkbox"><input type="checkbox" id="shiri-opt-kata" /> カ=か (가나 통일)</label>
+      <label class="checkbox"><input type="checkbox" id="shiri-opt-small" /> 작은⇄큰 같은 글자</label>
+      <label class="checkbox"><input type="checkbox" id="shiri-opt-dia" /> 탁점·반탁점 느슨하게 (が↔か)</label>
+      <label class="checkbox"><input type="checkbox" id="shiri-opt-long" title="コーヒー처럼 ー로 끝나면 앞 글자(ひ)로 잇습니다"> 장음(ー) 잇기</label>
+      <label class="checkbox"><input type="checkbox" id="shiri-opt-dead" /> ん으로 끝나면 막다른 길</label>
+    </div>
+
+    <div class="panel shiri-result">
+      <div class="baba-result-head">
+        <span class="baba-result-title">가장 긴 시리토리</span>
+        <span class="baba-surv-count" id="shiri-stats"></span>
+      </div>
+      <div class="shiri-chain" id="shiri-chain"></div>
+    </div>
+
+    <div class="shiri-legend" id="shiri-legend">
+      <span><span class="ln chain"></span>최장 체인</span>
+      <span><span class="ln"></span>그 외 이어짐</span>
+      <span><span class="ln cyc"></span>순환(되돌아옴)</span>
+      <span><span class="ln dead"></span>막다른 길(ん)</span>
+      <span class="spacer" style="flex:1 1 auto"></span>
+      <span style="color:var(--muted)">💡 노드를 드래그해 자유롭게 배치할 수 있어요</span>
+    </div>
+    <div class="panel" id="shiri-canvas-wrap">
+      <p class="empty" id="shiri-empty">단어를 추가하면 시리토리 그래프가 나타납니다.</p>
+    </div>
+
+    <div class="baba-list-head" style="margin-top:14px">
+      <span class="count" id="shiri-word-count"></span>
+      <div class="spacer"></div>
+      <button class="btn" id="shiri-clear" type="button">목록 비우기</button>
+    </div>
+    <div class="panel" id="shiri-list"></div>
   </section>
 
   <footer class="app">
@@ -948,7 +1057,7 @@ const els = {
   tooltip: $('#tooltip'),
   sections: {
     search: $('#tab-search'), all: $('#tab-all'), map: $('#tab-map'), shapes: $('#tab-shapes'),
-    graph: $('#tab-graph'), babanuki: $('#tab-babanuki'),
+    graph: $('#tab-graph'), babanuki: $('#tab-babanuki'), shiritori: $('#tab-shiritori'),
   },
 };
 
@@ -1313,6 +1422,7 @@ function renderActiveTab(){
   else if (state.tab === 'shapes') renderGallery();
   else if (state.tab === 'graph') graphRender();
   else if (state.tab === 'babanuki') babaRender();
+  else if (state.tab === 'shiritori') shiriRender();
 }
 /* re-render everything that's currently relevant after a strike change */
 function renderAll(){
@@ -1336,7 +1446,7 @@ function closeModeMenu(){
 function setTab(tab){
   state.tab = tab;
   /* 규칙 그래프·ババ抜き 는 상단 토글 레벨 도구 뷰 — 콘텐츠 탭 줄을 숨기고 도구만 전체 표시 */
-  const isView = (tab === 'graph' || tab === 'babanuki');
+  const isView = (tab === 'graph' || tab === 'babanuki' || tab === 'shiritori');
   els.tabs.classList.toggle('hidden', isView);
   els.tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   Object.entries(els.sections).forEach(([k, sec]) => sec.classList.toggle('hidden', k !== tab));
@@ -1363,7 +1473,7 @@ els.modeSeg.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   closeModeMenu();   /* 모바일: 항목 선택 시 드롭다운 닫기 */
   if (b.dataset.view) { setTab(b.dataset.view); return; }
-  if (state.tab === 'graph' || state.tab === 'babanuki') setTab('search');  /* 도구 뷰에서 데이터 모드 선택 시 검색 도구로 복귀 */
+  if (state.tab === 'graph' || state.tab === 'babanuki' || state.tab === 'shiritori') setTab('search');  /* 도구 뷰에서 데이터 모드 선택 시 검색 도구로 복귀 */
   setMode(b.dataset.mode);
 });
 /* 햄버거 토글 열기/닫기 + 바깥 클릭·Esc 로 닫기 */
@@ -3201,6 +3311,7 @@ let babaState = {
   kataAsHira: true,       /* カ=か 로 취급해 매칭 (가타카나↔히라가나 통일) */
   smallAsLarge: false,    /* ぁ=あ, っ=つ … 작은 글자⇄큰 글자 같은 글자 취급 */
   ignoreDiacritic: false, /* が=か, ぱ=は … 탁점·반탁점 무시 */
+  ignoreCase: true,       /* Apple=apple … 영문 대소문자 무시(영어 단어 지원, 기본 켬) */
 };
 
 function babaLoadState(){
@@ -3212,6 +3323,7 @@ function babaLoadState(){
       if (typeof raw.kataAsHira === 'boolean') babaState.kataAsHira = raw.kataAsHira;
       if (typeof raw.smallAsLarge === 'boolean') babaState.smallAsLarge = raw.smallAsLarge;
       if (typeof raw.ignoreDiacritic === 'boolean') babaState.ignoreDiacritic = raw.ignoreDiacritic;
+      if (typeof raw.ignoreCase === 'boolean') babaState.ignoreCase = raw.ignoreCase;
     }
   } catch(e){}
 }
@@ -3224,6 +3336,8 @@ function babaSaveState(){
 /* 한 글자를 비교용 키로 정규화. 표시는 원문 그대로 두고, 매칭에만 옵션을 적용한다. */
 function babaKey(ch, opts){
   let k = ch;
+  /* 영문 대소문자 무시(영어 단어 지원): 라틴 문자에만 영향, 가나에는 영향 없음(toLowerCase 무변화) */
+  if (opts.ignoreCase) k = k.toLowerCase();
   /* 탁점·소문자 매핑(graph*)은 히라가나 키만 가지므로, 두 옵션 중 하나라도 켜져 있으면
      먼저 히라가나로 바꿔서 처리해야 가타카나(ガ·ッ 등)에도 정규화가 적용된다.
      단 'カ=か'(kataAsHira)가 꺼져 있으면 가나 구분은 유지해야 하므로 원래 가타카나였는지 기억해 둔다. */
@@ -3367,6 +3481,7 @@ function babaInit(){
   const optKata = document.getElementById('baba-opt-kata');
   const optSmall = document.getElementById('baba-opt-small');
   const optDia = document.getElementById('baba-opt-dia');
+  const optCase = document.getElementById('baba-opt-case');
   const listEl = document.getElementById('baba-list');
 
   /* 컨트롤 초기값을 상태에 맞춤 */
@@ -3374,6 +3489,7 @@ function babaInit(){
   if (optKata) optKata.checked = babaState.kataAsHira;
   if (optSmall) optSmall.checked = babaState.smallAsLarge;
   if (optDia) optDia.checked = babaState.ignoreDiacritic;
+  if (optCase) optCase.checked = babaState.ignoreCase;
 
   if (addBtn) addBtn.addEventListener('click', babaAddFromInput);
   if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); babaAddFromInput(); } });
@@ -3386,6 +3502,7 @@ function babaInit(){
   bindOpt(optKata, 'kataAsHira');
   bindOpt(optSmall, 'smallAsLarge');
   bindOpt(optDia, 'ignoreDiacritic');
+  bindOpt(optCase, 'ignoreCase');
 
   /* 단어 삭제(×) — 이벤트 위임 */
   if (listEl) listEl.addEventListener('click', e => {
@@ -3394,6 +3511,570 @@ function babaInit(){
   });
 
   babaRender();
+}
+
+/* ========================================================================
+   しりとり (시리토리 / 끝말잇기) 탭
+   여러 단어를 받아 "앞 단어의 끝글자 = 뒤 단어의 첫글자" 로 이어지는 방향
+   그래프를 그리고, 그 위에 가장 긴 시리토리 체인을 강조한다.
+   가나·영어 모두 입력 가능(영어는 끝글자→첫글자, 대소문자 무시).
+   ======================================================================== */
+const LS_SHIRI = 'nazotoki-shiritori-v1';
+
+let shiriState = {
+  words: [],              /* string[] — 입력 단어(표시는 원문 그대로) */
+  kataAsHira: true,       /* カ=か (가나 통일, 기본 켬) */
+  smallAsLarge: false,    /* ぁ=あ, ょ=よ … 작은⇄큰 같은 글자 */
+  ignoreDiacritic: false, /* が↔か, ぱ↔は … 탁점·반탁점 느슨하게 */
+  longVowel: false,       /* 장음 ー로 끝나면 앞 글자로 잇기 (コーヒー→ひ) */
+  markDeadEnd: true,      /* ん으로 끝나면 막다른 길 표시(잇기 차단, 기본 켬) */
+  positions: {},          /* 단어 index → {x,y} : 사용자가 드래그로 옮긴 노드 위치(없으면 자동 배치) */
+};
+
+function shiriLoadState(){
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_SHIRI) || 'null');
+    if (raw && typeof raw === 'object'){
+      if (Array.isArray(raw.words)) shiriState.words = raw.words.filter(w => typeof w === 'string');
+      ['kataAsHira','smallAsLarge','ignoreDiacritic','longVowel','markDeadEnd'].forEach(k => {
+        if (typeof raw[k] === 'boolean') shiriState[k] = raw[k];
+      });
+      if (raw.positions && typeof raw.positions === 'object') shiriState.positions = raw.positions;
+    }
+  } catch(e){}
+}
+function shiriSaveState(){ try { localStorage.setItem(LS_SHIRI, JSON.stringify(shiriState)); } catch(e){} }
+
+/* ----- 순수 함수 레이어 (DOM 비의존, opts로 규칙 주입) ----- */
+
+/* 단어에서 의미 있는 글자만 추출 — 공백·구두점은 제거하되 장음 ー 는 유지(장음 옵션에서 사용) */
+function shiriLetters(word){
+  return Array.from(word || '').filter(c =>
+    !/[\s.,!?;:'"“”‘’`~^*=+()\[\]{}（）「」『』〈〉《》【】・･、。，．…〜＿_\-]/.test(c)
+  );
+}
+
+/* 한 글자를 비교용 키로 정규화 — babaKey를 재사용(영문은 항상 대소문자 무시) */
+function shiriFold(ch, opts){
+  return babaKey(ch, {
+    kataAsHira: opts.kataAsHira,
+    smallAsLarge: opts.smallAsLarge,
+    ignoreDiacritic: opts.ignoreDiacritic,
+    ignoreCase: true,
+  });
+}
+
+/* 끝글자(원문 형태)를 구한다 — 장음 옵션이면 ー를 건너뛰고 앞 글자를 끝글자로 본다 */
+function shiriRawTail(word, opts){
+  const ls = shiriLetters(word);
+  if (!ls.length) return null;
+  let i = ls.length - 1;
+  if (opts.longVowel) { while (i > 0 && ls[i] === 'ー') i--; }
+  return ls[i];
+}
+function shiriRawHead(word){
+  const ls = shiriLetters(word);
+  return ls.length ? ls[0] : null;
+}
+/* 잇기 비교에 쓰는 정규화된 첫/끝 키 */
+function shiriHeadKey(word, opts){ const h = shiriRawHead(word);        return h == null ? null : shiriFold(h, opts); }
+function shiriTailKey(word, opts){ const t = shiriRawTail(word, opts);  return t == null ? null : shiriFold(t, opts); }
+/* ん(ン)으로 끝나면 막다른 길 — 옵션과 무관하게 가나 통일로 판정 */
+function shiriIsDeadEnd(word, opts){
+  const t = shiriRawTail(word, opts);
+  return t != null && kataToHira(t) === 'ん';
+}
+
+/*
+ * 단어 목록 → 시리토리 방향 그래프 모델.
+ * 간선 i→j : i의 끝글자 키 === j의 첫글자 키 (자기 자신 제외).
+ * markDeadEnd 면 ん으로 끝나는 노드는 나가는 간선을 갖지 않는다(막다른 길).
+ */
+function shiriBuildModel(words, opts){
+  const n = words.length;
+  const headK = words.map(w => shiriHeadKey(w, opts));
+  const tailK = words.map(w => shiriTailKey(w, opts));
+  const rawHead = words.map(w => shiriRawHead(w));
+  const rawTail = words.map(w => shiriRawTail(w, opts));
+  const dead = words.map(w => shiriIsDeadEnd(w, opts));
+  const adj = [];
+  for (let i = 0; i < n; i++){
+    adj[i] = [];
+    if ((opts.markDeadEnd && dead[i]) || tailK[i] == null) continue;
+    for (let j = 0; j < n; j++){
+      if (i === j) continue;
+      if (headK[j] != null && tailK[i] === headK[j]) adj[i].push(j);
+    }
+  }
+  const indeg = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) for (const j of adj[i]) indeg[j]++;
+  const outdeg = adj.map(a => a.length);
+  const connected = words.map((_, i) => outdeg[i] > 0 || indeg[i] > 0);
+  const scc = shiriSCC(n, adj);   /* 순환(원형) 구조 식별 */
+  return { n, headK, tailK, rawHead, rawTail, dead, adj, indeg, outdeg, connected,
+           comp: scc.comp, compSize: scc.compSize, inCycle: scc.inCycle, opts };
+}
+
+/* Tarjan 강연결요소(SCC). 크기 2 이상인 SCC에 속한 노드는 '순환에 포함'(inCycle=true)이며,
+   그 안의 모든 간선은 어떤 사이클 위에 있다 → 최장 체인이 아니어도 원형 관계를 시각화할 수 있다. */
+function shiriSCC(n, adj){
+  const index = new Array(n).fill(-1), low = new Array(n).fill(0), onStk = new Array(n).fill(false);
+  const comp = new Array(n).fill(-1), stk = [];
+  let idx = 0, c = 0;
+  function strong(v){
+    index[v] = low[v] = idx++; stk.push(v); onStk[v] = true;
+    for (const w of adj[v]){
+      if (index[w] === -1){ strong(w); low[v] = Math.min(low[v], low[w]); }
+      else if (onStk[w]){ low[v] = Math.min(low[v], index[w]); }
+    }
+    if (low[v] === index[v]){ let w; do { w = stk.pop(); onStk[w] = false; comp[w] = c; } while (w !== v); c++; }
+  }
+  for (let v = 0; v < n; v++) if (index[v] === -1) strong(v);
+  const compSize = {};
+  for (let v = 0; v < n; v++) compSize[comp[v]] = (compSize[comp[v]] || 0) + 1;
+  const inCycle = new Array(n);
+  for (let v = 0; v < n; v++) inCycle[v] = compSize[comp[v]] >= 2;
+  return { comp, compSize, inCycle };
+}
+
+/* 가장 긴 시리토리(각 단어 1회) = 방향 그래프의 최장 단순 경로.
+   단어가 많아 폭주하면 step 상한에서 멈추고 truncated=true(근삿값) 표시. */
+function shiriLongestChain(model){
+  const { n, adj } = model;
+  let best = [];
+  let steps = 0, truncated = false;
+  const CAP = 1500000;
+  const visited = new Array(n).fill(false);
+  const path = [];
+  function dfs(u){
+    visited[u] = true; path.push(u);
+    if (path.length > best.length) best = path.slice();
+    const succ = adj[u];
+    for (let k = 0; k < succ.length; k++){
+      if (++steps > CAP){ truncated = true; break; }
+      const v = succ[k];
+      if (!visited[v]) dfs(v);
+      if (truncated) break;
+    }
+    path.pop(); visited[u] = false;
+  }
+  for (let s = 0; s < n && !truncated; s++) dfs(s);
+  return { chain: best, truncated };
+}
+
+/* ----- 레이아웃 / 렌더 ----- */
+let shiriMeasureCtx = null;
+let shiriJpFont = '';
+function shiriMeasureWidth(text, fontPx){
+  if (!shiriMeasureCtx) shiriMeasureCtx = document.createElement('canvas').getContext('2d');
+  if (!shiriJpFont){ try { shiriJpFont = getComputedStyle(document.body).fontFamily || 'sans-serif'; } catch(e){ shiriJpFont = 'sans-serif'; } }
+  shiriMeasureCtx.font = '700 ' + fontPx + 'px ' + shiriJpFont;
+  return shiriMeasureCtx.measureText(text || ' ').width;
+}
+function shiriMetrics(){
+  const narrow = window.matchMedia && window.matchMedia('(max-width: 480px)').matches;
+  return narrow
+    ? { nodeH: 32, padX: 9,  font: 14, gapX: 30, gapY: 22, pad: 12, minW: 34, arrowGap: 7, maxW: 200 }
+    : { nodeH: 40, padX: 13, font: 16, gapX: 46, gapY: 30, pad: 18, minW: 42, arrowGap: 8, maxW: 280 };
+}
+
+function svgEl(name, attrs){
+  const el = document.createElementNS(NS, name);
+  if (attrs) for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+/* 사각형 중심에서 (tx,ty) 방향으로 테두리와 만나는 점 */
+function shiriBorderPoint(cx, cy, hw, hh, tx, ty){
+  const dx = tx - cx, dy = ty - cy;
+  if (dx === 0 && dy === 0) return { x: cx, y: cy };
+  const sx = dx !== 0 ? hw / Math.abs(dx) : Infinity;
+  const sy = dy !== 0 ? hh / Math.abs(dy) : Infinity;
+  const s = Math.min(sx, sy);
+  return { x: cx + dx * s, y: cy + dy * s };
+}
+
+function shiriRender(){
+  const wrap = document.getElementById('shiri-canvas-wrap');
+  const opts = shiriState;
+  const words = shiriState.words;
+  const model = shiriBuildModel(words, opts);
+  const { chain, truncated } = shiriLongestChain(model);
+  const n = model.n;
+
+  /* ---- 결과(체인) + 통계 ---- */
+  const statsEl = document.getElementById('shiri-stats');
+  const chainEl = document.getElementById('shiri-chain');
+  const showChain = chain.length >= 2;
+  const deadCount = opts.markDeadEnd ? model.dead.filter(Boolean).length : 0;
+  /* 고립 = 아무 곳과도 안 이어짐. 단, 막다른(ん) 단어는 위 막다른 수에서 세므로 중복 집계하지 않는다(목록 배지와 일치) */
+  const isoCount = words.filter((_, i) => !model.connected[i] && !(opts.markDeadEnd && model.dead[i])).length;
+  const cycCount = model.inCycle ? model.inCycle.filter(Boolean).length : 0;
+  if (statsEl){
+    if (!n) statsEl.textContent = '';
+    else {
+      let s = n + '개 단어 · 최장 ' + chain.length + '개 이음';
+      if (truncated) s += ' (근삿값)';
+      if (cycCount) s += ' · 순환 ' + cycCount;
+      if (opts.markDeadEnd && deadCount) s += ' · 막다른 ' + deadCount;
+      if (isoCount) s += ' · 고립 ' + isoCount;
+      statsEl.textContent = s;
+    }
+  }
+  if (chainEl){
+    chainEl.innerHTML = '';
+    if (!n){
+      chainEl.innerHTML = '<span class="shiri-empty">단어를 추가하면 가장 긴 시리토리가 여기에 나타납니다.</span>';
+    } else if (!showChain){
+      chainEl.innerHTML = '<span class="shiri-empty">이을 수 있는 단어 쌍이 없습니다. (끝글자=첫글자인 단어를 더해 보세요)</span>';
+    } else {
+      chain.forEach((idx, k) => {
+        if (k > 0){
+          const lk = model.rawTail[chain[k - 1]] || '';
+          const ar = document.createElement('span');
+          ar.className = 'shiri-arrow';
+          ar.innerHTML = '<span class="lk">' + babaEsc(lk) + '</span><span>→</span>';
+          chainEl.appendChild(ar);
+        }
+        const chip = document.createElement('span');
+        chip.className = 'shiri-chip';
+        chip.innerHTML = '<span class="ci">' + (k + 1) + '</span><span>' + babaEsc(words[idx]) + '</span>';
+        chainEl.appendChild(chip);
+      });
+    }
+  }
+
+  /* ---- 단어 수 ---- */
+  const wcEl = document.getElementById('shiri-word-count');
+  if (wcEl) wcEl.textContent = n ? (n + '개 단어') : '';
+
+  /* ---- 그래프 캔버스 ---- */
+  const emptyEl = document.getElementById('shiri-empty');
+  if (emptyEl) emptyEl.style.display = n ? 'none' : '';
+  if (wrap){
+    const oldSvg = wrap.querySelector('svg.shiri-canvas');
+    if (oldSvg) oldSvg.remove();
+    if (n) shiriRenderGraph(wrap, model, chain, showChain);
+  }
+
+  /* ---- 단어별 목록 ---- */
+  shiriRenderList(model);
+}
+
+function shiriRenderGraph(wrap, model, chain, showChain){
+  const M = shiriMetrics();
+  const n = model.n;
+  const words = shiriState.words;
+  const stored = shiriState.positions || {};
+
+  /* 노드 크기 측정 */
+  const node = words.map(w => {
+    const tw = shiriMeasureWidth(w, M.font);
+    const width = Math.min(M.maxW, Math.max(M.minW, Math.ceil(tw || 0) + M.padX * 2));  /* tw가 NaN이어도 안전 */
+    return { w: width, h: M.nodeH };
+  });
+
+  const chainArr = showChain ? chain : [];
+  const chainSet = new Set(chainArr);
+  const chainPos = {}; chainArr.forEach((idx, k) => chainPos[idx] = k);
+
+  const containerW = wrap.clientWidth > 0 ? Math.max(280, wrap.clientWidth) : 600;  /* 숨겨진 상태(clientWidth 0)에서는 임시 폭, 탭 표시 시 재렌더 */
+
+  /* --- 자동 배치 (드래그로 옮긴 노드는 저장 위치로 덮어쓴다) --- */
+  const auto = {};
+  let x = M.pad, chainBottom = M.pad;
+  chainArr.forEach(idx => { auto[idx] = { x: x, y: M.pad }; x += node[idx].w + M.gapX; chainBottom = Math.max(chainBottom, M.pad + node[idx].h); });
+  const chainRight = chainArr.length ? (x - M.gapX + M.pad) : M.pad;
+  const others = [];
+  for (let i = 0; i < n; i++) if (!chainSet.has(i)) others.push(i);
+  const wrapW = Math.max(containerW, chainRight);
+  let gx = M.pad, gy = chainArr.length ? (chainBottom + Math.round(M.gapY * 1.5)) : M.pad, rowH = 0;
+  others.forEach(idx => {
+    if (gx > M.pad && gx + node[idx].w > wrapW - M.pad){ gx = M.pad; gy += rowH + M.gapY; rowH = 0; }
+    auto[idx] = { x: gx, y: gy };
+    gx += node[idx].w + M.gapX; rowH = Math.max(rowH, node[idx].h);
+  });
+
+  const pos = {};
+  for (let i = 0; i < n; i++){
+    const s = stored[i];
+    pos[i] = (s && Number.isFinite(s.x) && Number.isFinite(s.y)) ? { x: s.x, y: s.y } : auto[i];
+  }
+
+  function bounds(){
+    let right = M.pad, bottom = M.pad;
+    for (let i = 0; i < n; i++){ if (!pos[i]) continue; right = Math.max(right, pos[i].x + node[i].w + M.pad); bottom = Math.max(bottom, pos[i].y + node[i].h + M.pad); }
+    return { right, bottom };
+  }
+  const b0 = bounds();
+  let W = Math.max(b0.right, containerW), H = b0.bottom;
+
+  const svg = svgEl('svg', { 'class': 'shiri-canvas', viewBox: '0 0 ' + W + ' ' + H, width: W, height: H });
+
+  /* 화살촉 마커 (보통/체인/순환) */
+  const defs = svgEl('defs');
+  ['shiri-mk', 'shiri-mk-chain', 'shiri-mk-cyc'].forEach(id => {
+    const mk = svgEl('marker', { id: id, markerWidth: '9', markerHeight: '9', refX: '8', refY: '4', orient: 'auto', markerUnits: 'userSpaceOnUse' });
+    mk.appendChild(svgEl('path', { d: 'M0,0 L8,4 L0,8 Z' }));
+    defs.appendChild(mk);
+  });
+  svg.appendChild(defs);
+
+  const edgeIsCyc = (i, j) => model.inCycle && model.inCycle[i] && model.inCycle[j] && model.comp[i] === model.comp[j];
+
+  /* 간선 기하 계산 — 초기 그리기와 드래그 중 갱신에서 공용으로 쓴다 */
+  function edgeGeom(i, j, isChain){
+    const ci = { x: pos[i].x + node[i].w / 2, y: pos[i].y + node[i].h / 2 };
+    const cj = { x: pos[j].x + node[j].w / 2, y: pos[j].y + node[j].h / 2 };
+    const p1 = shiriBorderPoint(ci.x, ci.y, node[i].w / 2, node[i].h / 2, cj.x, cj.y);
+    let p2 = shiriBorderPoint(cj.x, cj.y, node[j].w / 2, node[j].h / 2, ci.x, ci.y);
+    let vx = p1.x - p2.x, vy = p1.y - p2.y; const vlen = Math.hypot(vx, vy) || 1;
+    p2 = { x: p2.x + vx / vlen * M.arrowGap, y: p2.y + vy / vlen * M.arrowGap };
+    const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+    let nx = -(p2.y - p1.y), ny = (p2.x - p1.x); const nlen = Math.hypot(nx, ny) || 1;
+    let curve = 0;
+    if (!isChain){
+      const reverse = model.adj[j] && model.adj[j].indexOf(i) >= 0;
+      curve = Math.min(38, vlen * 0.16) * (i < j ? 1 : -1) * (reverse ? 1 : 0.55);
+    }
+    const cpx = mx + nx / nlen * curve, cpy = my + ny / nlen * curve;
+    return { d: 'M ' + p1.x + ' ' + p1.y + ' Q ' + cpx + ' ' + cpy + ' ' + p2.x + ' ' + p2.y, lx: mx, ly: my - 6 };
+  }
+
+  /* 노드 먼저(간선이 위에 그려져 화살촉이 보이도록) */
+  const nodesG = svgEl('g');
+  const nodeEls = {};
+  for (let i = 0; i < n; i++){
+    if (!pos[i]) continue;
+    const cls = 'shiri-node'
+      + (chainSet.has(i) ? ' chain' : '')
+      + (model.inCycle && model.inCycle[i] ? ' cyc' : '')
+      + (shiriState.markDeadEnd && model.dead[i] ? ' dead' : '')
+      + (!model.connected[i] ? ' iso' : '');
+    const g = svgEl('g', { 'class': cls, 'data-idx': String(i), transform: 'translate(' + pos[i].x + ',' + pos[i].y + ')' });
+    g.appendChild(svgEl('rect', { 'class': 'shiri-node-rect', x: '0', y: '0', width: String(node[i].w), height: String(node[i].h), rx: '8', ry: '8' }));
+    const tx = svgEl('text', { 'class': 'shiri-node-text', x: String(node[i].w / 2), y: String(node[i].h / 2 + M.font * 0.35), 'text-anchor': 'middle', 'font-size': String(M.font), 'font-weight': '700' });
+    tx.textContent = words[i];
+    const innerW = node[i].w - M.padX * 2;
+    if (shiriMeasureWidth(words[i], M.font) > innerW){ tx.setAttribute('textLength', String(innerW)); tx.setAttribute('lengthAdjust', 'spacingAndGlyphs'); }
+    g.appendChild(tx);
+    const title = svgEl('title'); title.textContent = words[i]; g.appendChild(title);
+    nodesG.appendChild(g);
+    nodeEls[i] = g;
+  }
+  svg.appendChild(nodesG);
+
+  /* 간선 + (체인 간선의) 잇는 글자 라벨 */
+  const edgesG = svgEl('g'), lblG = svgEl('g');
+  const edges = [];
+  for (let i = 0; i < n; i++){
+    for (const j of model.adj[i]){
+      if (!pos[i] || !pos[j]) continue;
+      const isChain = (chainPos[i] !== undefined && chainPos[j] === chainPos[i] + 1);
+      const cyc = !isChain && edgeIsCyc(i, j);
+      const geom = edgeGeom(i, j, isChain);
+      const mk = isChain ? 'shiri-mk-chain' : (cyc ? 'shiri-mk-cyc' : 'shiri-mk');
+      const path = svgEl('path', { 'class': 'shiri-edge' + (isChain ? ' chain' : '') + (cyc ? ' cyc' : ''), d: geom.d, 'marker-end': 'url(#' + mk + ')' });
+      edgesG.appendChild(path);
+      let labelEl = null;
+      if (isChain){
+        const lk = model.rawTail[i] || '';
+        if (lk){ labelEl = svgEl('text', { 'class': 'shiri-edge-label', x: String(geom.lx), y: String(geom.ly), 'text-anchor': 'middle' }); labelEl.textContent = lk; lblG.appendChild(labelEl); }
+      }
+      edges.push({ el: path, i: i, j: j, isChain: isChain, labelEl: labelEl });
+    }
+  }
+  svg.appendChild(edgesG);
+  svg.appendChild(lblG);
+  wrap.appendChild(svg);
+
+  /* 호버 → 연결된 (보통) 간선 강조 */
+  function setHl(idx, on){
+    edges.forEach(e => {
+      if (e.isChain || e.el.classList.contains('cyc')) return;
+      if (e.i === idx || e.j === idx) e.el.classList.toggle('hl', on);
+    });
+  }
+
+  /* 드래그 좌표 변환 / 캔버스 확장 / 간선 추적 */
+  function getSvgScale(){ const bb = svg.getBoundingClientRect(); const vb = svg.viewBox.baseVal; return { sx: vb.width / (bb.width || 1), sy: vb.height / (bb.height || 1) }; }
+  function growCanvasFor(idx){
+    let changed = false;
+    const needW = pos[idx].x + node[idx].w + M.pad, needH = pos[idx].y + node[idx].h + M.pad;
+    if (needW > W){ W = needW; changed = true; }
+    if (needH > H){ H = needH; changed = true; }
+    if (changed){ svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', W); svg.setAttribute('height', H); }
+  }
+  function repositionNode(idx){
+    const g = nodeEls[idx]; if (!g) return;
+    g.setAttribute('transform', 'translate(' + pos[idx].x + ',' + pos[idx].y + ')');
+    edges.forEach(e => {
+      if (e.i !== idx && e.j !== idx) return;
+      const geom = edgeGeom(e.i, e.j, e.isChain);
+      e.el.setAttribute('d', geom.d);
+      if (e.labelEl){ e.labelEl.setAttribute('x', String(geom.lx)); e.labelEl.setAttribute('y', String(geom.ly)); }
+    });
+  }
+
+  /* 노드 드래그(규칙 그래프와 동일한 방식) + 호버 */
+  for (let i = 0; i < n; i++){
+    const g = nodeEls[i]; if (!g) continue;
+    (function(idx){
+      let dragging = false, moved = false, startCX = 0, startCY = 0, startX = 0, startY = 0;
+      g.addEventListener('mouseenter', () => { if (!dragging) setHl(idx, true); });
+      g.addEventListener('mouseleave', () => { if (!dragging) setHl(idx, false); });
+      g.addEventListener('pointerdown', function(e){
+        if (e.button === 2) return;
+        e.preventDefault(); e.stopPropagation();
+        dragging = true; moved = false;
+        try { g.setPointerCapture(e.pointerId); } catch(_){}
+        startCX = e.clientX; startCY = e.clientY;
+        startX = pos[idx].x; startY = pos[idx].y;
+        g.style.cursor = 'grabbing';
+      });
+      g.addEventListener('pointermove', function(e){
+        if (!dragging) return;
+        if (Math.abs(e.clientX - startCX) > 3 || Math.abs(e.clientY - startCY) > 3) moved = true;
+        if (!moved) return;
+        e.preventDefault();
+        const sc = getSvgScale();
+        pos[idx] = {
+          x: Math.max(M.pad, startX + (e.clientX - startCX) * sc.sx),
+          y: Math.max(M.pad, startY + (e.clientY - startCY) * sc.sy),
+        };
+        repositionNode(idx);
+        growCanvasFor(idx);
+      });
+      function endDrag(e){
+        if (!dragging) return;
+        dragging = false;
+        if (e && e.pointerId !== undefined){ try { g.releasePointerCapture(e.pointerId); } catch(_){} }
+        g.style.cursor = '';
+        if (moved){
+          shiriState.positions = shiriState.positions || {};
+          shiriState.positions[idx] = { x: pos[idx].x, y: pos[idx].y };
+          shiriSaveState();
+        }
+        moved = false;
+      }
+      g.addEventListener('pointerup', endDrag);
+      g.addEventListener('pointercancel', endDrag);
+    })(i);
+  }
+}
+
+function shiriRenderList(model){
+  const listEl = document.getElementById('shiri-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  const words = shiriState.words;
+  if (!words.length){
+    const p = document.createElement('p'); p.className = 'empty';
+    p.textContent = '아직 추가된 단어가 없습니다.';
+    listEl.appendChild(p);
+    return;
+  }
+  words.forEach((w, i) => {
+    const row = document.createElement('div'); row.className = 'shiri-word';
+    const lbl = document.createElement('span'); lbl.className = 'shiri-wlabel'; lbl.textContent = 'W' + (i + 1);
+    const word = document.createElement('span'); word.className = 'shiri-wword';
+    word.textContent = w && w.trim() ? w : '(빈 단어)';
+
+    const meta = document.createElement('span'); meta.className = 'shiri-wmeta';
+    const rh = model.rawHead[i], rt = model.rawTail[i];
+    if (rh != null && rt != null){
+      meta.innerHTML = '첫 <b>' + babaEsc(rh) + '</b> · 끝 <b>' + babaEsc(rt) + '</b>';
+    }
+    const isDead = shiriState.markDeadEnd && model.dead[i];
+    if (isDead){ const b = document.createElement('span'); b.className = 'shiri-badge dead'; b.textContent = '막다른 길(ん)'; meta.appendChild(document.createTextNode(' ')); meta.appendChild(b); }
+    else if (!model.connected[i] && rh != null){ const b = document.createElement('span'); b.className = 'shiri-badge iso'; b.textContent = '고립'; meta.appendChild(document.createTextNode(' ')); meta.appendChild(b); }
+    if (model.inCycle && model.inCycle[i]){ const b = document.createElement('span'); b.className = 'shiri-badge cyc'; b.textContent = '순환'; meta.appendChild(document.createTextNode(' ')); meta.appendChild(b); }
+
+    const spacer = document.createElement('span'); spacer.className = 'spacer';
+    const del = document.createElement('button');
+    del.className = 'baba-del'; del.type = 'button'; del.title = '이 단어 삭제';
+    del.textContent = '×'; del.dataset.wi = String(i);
+
+    row.appendChild(lbl); row.appendChild(word); row.appendChild(meta); row.appendChild(spacer); row.appendChild(del);
+    listEl.appendChild(row);
+  });
+}
+
+/* ----- 동작 ----- */
+function shiriAddFromInput(){
+  const inp = document.getElementById('shiri-input');
+  if (!inp) return;
+  /* 구분자: 공백류(전각 공백 포함) + 모든 형태의 쉼표 (바바누키와 동일) */
+  const tokens = (inp.value || '').split(/[\s,、，､]+/).map(s => s.trim()).filter(Boolean);
+  inp.value = '';
+  if (tokens.length === 0){ inp.focus(); return; }
+  shiriState.words = shiriState.words.concat(tokens);
+  shiriSaveState();
+  shiriRender();
+  inp.focus();
+}
+function shiriRemoveWord(i){
+  shiriState.words = shiriState.words.filter((_, k) => k !== i);
+  /* 삭제로 인덱스가 한 칸씩 당겨지므로 드래그 위치도 같이 remap (규칙 그래프와 동일) */
+  shiriState.positions = graphRemapPositions(shiriState.positions || {}, i);
+  shiriSaveState();
+  shiriRender();
+}
+function shiriClearAll(){
+  if (shiriState.words.length === 0) return;
+  if (!confirm('단어 목록을 모두 비우시겠습니까?')) return;
+  shiriState.words = [];
+  shiriState.positions = {};
+  shiriSaveState();
+  shiriRender();
+}
+/* 드래그로 옮긴 위치를 모두 버리고 자동 배치로 되돌린다 */
+function shiriAutoArrange(){
+  shiriState.positions = {};
+  shiriSaveState();
+  shiriRender();
+}
+
+function shiriInit(){
+  shiriLoadState();
+  const inp = document.getElementById('shiri-input');
+  const addBtn = document.getElementById('shiri-add');
+  const arrangeBtn = document.getElementById('shiri-arrange');
+  const clearBtn = document.getElementById('shiri-clear');
+  const listEl = document.getElementById('shiri-list');
+  const optKata = document.getElementById('shiri-opt-kata');
+  const optSmall = document.getElementById('shiri-opt-small');
+  const optDia = document.getElementById('shiri-opt-dia');
+  const optLong = document.getElementById('shiri-opt-long');
+  const optDead = document.getElementById('shiri-opt-dead');
+
+  if (optKata) optKata.checked = shiriState.kataAsHira;
+  if (optSmall) optSmall.checked = shiriState.smallAsLarge;
+  if (optDia) optDia.checked = shiriState.ignoreDiacritic;
+  if (optLong) optLong.checked = shiriState.longVowel;
+  if (optDead) optDead.checked = shiriState.markDeadEnd;
+
+  if (addBtn) addBtn.addEventListener('click', shiriAddFromInput);
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); shiriAddFromInput(); } });
+  if (arrangeBtn) arrangeBtn.addEventListener('click', shiriAutoArrange);
+  if (clearBtn) clearBtn.addEventListener('click', shiriClearAll);
+
+  const bindOpt = (el, prop) => { if (el) el.addEventListener('change', () => { shiriState[prop] = el.checked; shiriSaveState(); shiriRender(); }); };
+  bindOpt(optKata, 'kataAsHira');
+  bindOpt(optSmall, 'smallAsLarge');
+  bindOpt(optDia, 'ignoreDiacritic');
+  bindOpt(optLong, 'longVowel');
+  bindOpt(optDead, 'markDeadEnd');
+
+  if (listEl) listEl.addEventListener('click', e => {
+    const b = e.target.closest('.baba-del'); if (!b) return;
+    shiriRemoveWord(Number(b.dataset.wi));
+  });
+
+  /* 화면 폭이 바뀌면(회전 등) 그래프를 다시 그려 레이아웃·캔버스 폭을 맞춘다 */
+  window.addEventListener('resize', () => { if (state.tab === 'shiritori') shiriRender(); });
+
+  shiriRender();
 }
 
 /* ---------- init ---------- */
@@ -3406,6 +4087,7 @@ function init(){
   refreshStrikeUI();
   graphInit();           // 규칙 그래프 탭 초기화 (상태 로드 + 단위 테스트 자동 실행)
   babaInit();            // ババ抜き 탭 초기화 (상태 로드 + 렌더)
+  shiriInit();           // しりとり 탭 초기화 (상태 로드 + 렌더)
   setTab('search');
 }
 init();
