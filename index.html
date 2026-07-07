@@ -527,7 +527,7 @@
       <div class="field">
         <label for="graphWordText">단어 입력</label>
         <input type="text" id="graphWordText" autocomplete="off" autocapitalize="off" spellcheck="false"
-               placeholder="예: さくら" style="width:150px" />
+               placeholder="예: さくら / apple" style="width:150px" />
       </div>
       <button class="btn" id="graphAddWordText">+ 단어 추가</button>
       <div class="field">
@@ -537,6 +537,7 @@
       <button class="btn" id="graphAddWord">+ 빈 칸</button>
       <button class="btn" id="graphConnectToggle" aria-pressed="false">🔗 규칙 연결: 끔</button>
       <button class="btn" id="graphLooseToggle" aria-pressed="false" title="같은 글자 규칙에서 작은 글자(ぁゃっ)와 큰 글자(あやつ)를 같은 글자로 취급">작은⇄큰 같은 글자: 끔</button>
+      <button class="btn" id="graphWrapToggle" aria-pressed="false" title="'다음 글자' 규칙이 순서의 끝을 넘으면 처음으로 순환 (ん→あ, 이로하 す→い, 알파벳 z→a)">순환 ん→あ: 끔</button>
       <span class="hint" id="graphConnectHint" style="display:none">셀에서 다른 셀로 드래그해 규칙을 만드세요</span>
       <div class="spacer"></div>
       <button class="btn" id="graphClearAll">전체 삭제</button>
@@ -1560,7 +1561,7 @@ function graphAddWord(words, charCount) {
  * @returns {string[]}
  */
 function graphParseWordChars(text) {
-  const norm = kataToHira(String(text == null ? '' : text));
+  const norm = toAsciiLetters(kataToHira(String(text == null ? '' : text)));
   return Array.from(norm).filter(function(c){ return !/\s/.test(c); });
 }
 
@@ -1817,6 +1818,7 @@ let graphState = {
   rules: [],       /* Array<{sourceCell, targetCell, ruleType, ruleClass, ruleDirection}> */
   positions: {},   /* {[cellId]: {x, y}} — 후속 AC에서 채워짐 */
   looseSmallLarge: false,  /* 전역: 같은 글자 규칙에서 작은⇄큰을 같은 글자로 취급 */
+  seqWrap: false,          /* 전역: '다음 글자' 규칙이 순서의 끝을 넘으면 처음으로 순환 (ん→あ 등) */
 };
 
 function graphLoadState() {
@@ -1829,6 +1831,7 @@ function graphLoadState() {
     graphState.rules = Array.isArray(parsed.rules) ? parsed.rules : [];
     graphState.positions = (parsed.positions && typeof parsed.positions === 'object') ? parsed.positions : {};
     graphState.looseSmallLarge = !!parsed.looseSmallLarge;
+    graphState.seqWrap = !!parsed.seqWrap;
     /* 레거시 same_char_sl 규칙 → same_char 로 통합 */
     graphState.rules.forEach(function(r){ if (r.ruleType === 'same_char_sl') r.ruleType = 'same_char'; });
     /* 레거시 smallOnly → cellType */
@@ -1856,6 +1859,7 @@ function graphSaveState() {
     rules: graphState.rules,
     positions: graphState.positions,
     looseSmallLarge: graphState.looseSmallLarge,
+    seqWrap: graphState.seqWrap,
   };
   localStorage.setItem(LS_GRAPH, JSON.stringify(toSave));
 }
@@ -2304,7 +2308,7 @@ function graphUpdateWordListSlot(cellId, char) {
  * @param {string} rawChar - 사용자가 입력한 글자 (히라가나/카타카나/빈 문자열)
  */
 function graphCommitCellChar(cellId, rawChar) {
-  var ch = kataToHira((rawChar || '').trim()).slice(0, 1);
+  var ch = toAsciiLetters(kataToHira((rawChar || '').trim())).slice(0, 1);
   var _l = graphFindLetter(cellId);
   if (ch && _l && _l.cellType) ch = graphCellTypeConvert(ch, _l.cellType);  /* 칸 타입: 입력을 작은/탁점/반탁점 형태로 변환 */
   graphState.words = graphUpdateCellChar(graphState.words, cellId, ch, 'user');
@@ -2429,7 +2433,7 @@ function graphInitCellEditor() {
 
   editor.addEventListener('compositionend', function() {
     composing = false;
-    var ch = kataToHira(editor.value.trim()).slice(0, 1);
+    var ch = toAsciiLetters(kataToHira(editor.value.trim())).slice(0, 1);
     if (graphSelectedCellId) {
       graphCommitCellChar(graphSelectedCellId, ch);
       editor.value = ch;
@@ -2440,7 +2444,7 @@ function graphInitCellEditor() {
   editor.addEventListener('input', function() {
     /* composing 게이트 제거: IME 합성 플래그가 끼어 입력이 커밋되지 않던 버그 수정.
        마지막 글자만 유지하고 매 입력마다 커밋한다 (compositionend에서도 한 번 더 커밋). */
-    var val = kataToHira(editor.value);
+    var val = toAsciiLetters(kataToHira(editor.value));
     if (val.length > 1) val = val.slice(-1);
     if (graphSelectedCellId) {
       graphCommitCellChar(graphSelectedCellId, val);
@@ -2552,7 +2556,7 @@ function graphInitForm() {
     clearBtn.addEventListener('click', function() {
       if (!graphState.words.length) return;
       if (!confirm('모든 단어와 규칙을 삭제하시겠습니까?')) return;
-      graphState = { words: [], rules: [], positions: {}, looseSmallLarge: graphState.looseSmallLarge };
+      graphState = { words: [], rules: [], positions: {}, looseSmallLarge: graphState.looseSmallLarge, seqWrap: graphState.seqWrap };
       graphSaveState();
       graphRender();
     });
@@ -2572,29 +2576,55 @@ function gojuonPrevChar(c){ return seqStepChar(c, 'gojuon', -1); }
 
 /* 이로하(いろは) 순서 (고전 47자) — '다음 글자' 규칙의 대체 순서 */
 var GRAPH_IROHA = 'いろはにほへとちりぬるをわかよたれそつねならむうゐのおくやまけふこえてあさきゆめみしゑひもせす';
-function graphSeqStr(order){ return order === 'iroha' ? GRAPH_IROHA : GRAPH_GOJUON; }
-/** 시퀀스(order)에서 ch 로부터 step 칸 떨어진 글자. 범위를 벗어나거나 시퀀스에 없으면 null.
- *  gojuon: 청음은 선형(행을 넘어감), 탁음·반탁음은 같은 자음 행 안에서만 이동. */
+/* 알파벳 순서 (a~z) — '다음 글자' 규칙의 대체 순서. 대소문자 구분 없이 찾는다. */
+var GRAPH_ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
+function graphSeqStr(order){ return order === 'iroha' ? GRAPH_IROHA : order === 'alphabet' ? GRAPH_ALPHABET : GRAPH_GOJUON; }
+/** 시퀀스 내 인덱스 이동. 전역 순환 옵션(seqWrap) 켬이면 끝→처음으로 감아 돌고, 끔이면 범위 밖일 때 -1. */
+function seqIdxStep(i, step, len){
+  var j = i + step;
+  if (graphState.seqWrap){ j %= len; return j < 0 ? j + len : j; }
+  return (j < 0 || j >= len) ? -1 : j;
+}
+/** 시퀀스(order)에서 ch 로부터 step 칸 떨어진 글자. 시퀀스에 없거나 (순환 끔일 때) 범위를 벗어나면 null.
+ *  gojuon: 청음은 선형(행을 넘어감), 탁음·반탁음은 같은 자음 행 안에서만 이동.
+ *  alphabet: 대소문자 구분 없이 찾고, 결과는 기준 글자의 대소문자를 따른다. */
 function seqStepChar(ch, order, step){
   if (order === 'gojuon'){
     var i = GRAPH_GOJUON.indexOf(ch);
-    if (i >= 0){ var j = i + step; return (j < 0 || j >= GRAPH_GOJUON.length) ? null : GRAPH_GOJUON[j]; }
+    if (i >= 0){ var j = seqIdxStep(i, step, GRAPH_GOJUON.length); return j < 0 ? null : GRAPH_GOJUON[j]; }
     for (var r = 0; r < GRAPH_GOJUON_VOICED.length; r++){
       var row = GRAPH_GOJUON_VOICED[r], k = row.indexOf(ch);
-      if (k >= 0){ var m = k + step; return (m < 0 || m >= row.length) ? null : row[m]; }
+      if (k >= 0){ var m = seqIdxStep(k, step, row.length); return m < 0 ? null : row[m]; }
     }
     return null;
+  }
+  if (order === 'alphabet'){
+    var half = toAsciiLetters(ch), lo = half.toLowerCase();
+    var ai = lo.length === 1 ? GRAPH_ALPHABET.indexOf(lo) : -1;
+    if (ai < 0) return null;
+    var aj = seqIdxStep(ai, step, GRAPH_ALPHABET.length);
+    if (aj < 0) return null;
+    return half === lo ? GRAPH_ALPHABET[aj] : GRAPH_ALPHABET[aj].toUpperCase();
   }
   /* iroha (선형) */
   var ii = GRAPH_IROHA.indexOf(ch);
   if (ii < 0) return null;
-  var jj = ii + step;
-  return (jj < 0 || jj >= GRAPH_IROHA.length) ? null : GRAPH_IROHA[jj];
+  var jj = seqIdxStep(ii, step, GRAPH_IROHA.length);
+  return jj < 0 ? null : GRAPH_IROHA[jj];
+}
+/** 시퀀스 규칙 값 비교: alphabet 은 대소문자(전각 포함) 무시, 그 외 정확 일치 */
+function seqCharEq(a, b, order){
+  if (order === 'alphabet') return toAsciiLetters(a).toLowerCase() === toAsciiLetters(b).toLowerCase();
+  return a === b;
 }
 
 /** 전각 숫자(０-９)를 반각(0-9)으로 정규화 — 일본어 자판의 전각 숫자 입력 지원 */
 function toAsciiDigits(s){
   return String(s == null ? '' : s).replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+}
+/** 전각 영문(Ａ-Ｚａ-ｚ)을 반각으로 정규화 — 일본어 자판의 전각 알파벳 입력 지원 */
+function toAsciiLetters(s){
+  return String(s == null ? '' : s).replace(/[Ａ-Ｚａ-ｚ]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
 }
 
 /* 음운(자음·모음) 판정표 — 로마자 기준 (が=g, か=k 구분 등) */
@@ -2688,7 +2718,7 @@ var GRAPH_RULE_DEFS = {
   same_char_dakuten: { label: '같은 글자 (탁점 떼기)', color: '#0891b2', ruleClass: 'derivation', directed: false },
   same_vowel:     { label: '모음 같음',         color: '#16a34a', ruleClass: 'validation', directed: false },
   same_consonant: { label: '자음 같음',         color: '#9333ea', ruleClass: 'validation', directed: false },
-  gojuon_next:    { label: '다음 글자',          color: '#ea580c', colorIroha: '#0d9488', ruleClass: 'derivation', directed: true },
+  gojuon_next:    { label: '다음 글자',          color: '#ea580c', colorIroha: '#0d9488', colorAlpha: '#ca8a04', ruleClass: 'derivation', directed: true },
 };
 
 /** 엔진 계산 결과 (저장하지 않음 — 매번 재계산) */
@@ -2796,7 +2826,7 @@ function graphComputeEngine(){
       if (a2.consonant !== null && b2.consonant !== null && a2.consonant !== b2.consonant) ruleViol[r._idx] = true;
     } else if (r.ruleType === 'gojuon_next'){
       var nx2 = seqStepChar(vs, r.order, r.step);
-      if (nx2 === null || nx2 !== vt) ruleViol[r._idx] = true;
+      if (nx2 === null || !seqCharEq(nx2, vt, r.order)) ruleViol[r._idx] = true;
     }
   });
 
@@ -2847,7 +2877,7 @@ function graphRenderEdges(){
   if (!svg.querySelector('defs#graph-defs')){
     var defs = document.createElementNS(NS, 'defs');
     defs.setAttribute('id', 'graph-defs');
-    ['#ea580c', '#ef4444', '#0d9488'].forEach(function(col){
+    ['#ea580c', '#ef4444', '#0d9488', '#ca8a04'].forEach(function(col){
       var mk = document.createElementNS(NS, 'marker');
       mk.setAttribute('id', 'graph-arrow-' + col.replace('#', ''));
       mk.setAttribute('viewBox', '0 0 10 10'); mk.setAttribute('refX', '9'); mk.setAttribute('refY', '5');
@@ -2864,7 +2894,10 @@ function graphRenderEdges(){
     var def = GRAPH_RULE_DEFS[r.ruleType] || { color: '#888', directed: false };
     var viol = !!graphEngine.ruleViol[ri];
     var isSeq = (r.ruleType === 'gojuon_next');
-    var baseCol = (isSeq && r.order === 'iroha') ? (def.colorIroha || def.color) : def.color;
+    var baseCol = !isSeq ? def.color
+      : r.order === 'iroha' ? (def.colorIroha || def.color)
+      : r.order === 'alphabet' ? (def.colorAlpha || def.color)
+      : def.color;
     var col = viol ? '#ef4444' : baseCol;
     var sameWord = (String(r.sourceCell).split('-')[0] === String(r.targetCell).split('-')[0]);
 
@@ -2907,9 +2940,9 @@ function graphRenderEdges(){
     ln.setAttribute('pointer-events', 'none');
     if (def.directed) ln.setAttribute('marker-end', 'url(#graph-arrow-' + col.replace('#', '') + ')');
     g.appendChild(ln);
-    /* 시퀀스 규칙 라벨: 이로하거나 step>1 일 때 "い+N" / "+N" 표시 */
-    if (isSeq && (r.order === 'iroha' || (r.step || 1) > 1)){
-      var txt = (r.order === 'iroha' ? 'い' : '') + '+' + (r.step || 1);
+    /* 시퀀스 규칙 라벨: 이로하·알파벳이거나 step>1 일 때 "い+N" / "A+N" / "+N" 표시 */
+    if (isSeq && (r.order === 'iroha' || r.order === 'alphabet' || (r.step || 1) > 1)){
+      var txt = (r.order === 'iroha' ? 'い' : r.order === 'alphabet' ? 'A' : '') + '+' + (r.step || 1);
       var lw = 9 + txt.length * 6;
       var bg = document.createElementNS(NS, 'rect');
       bg.setAttribute('x', labelX - lw / 2); bg.setAttribute('y', labelY - 9);
@@ -3073,7 +3106,7 @@ function graphOpenRuleMenu(sourceCell, targetCell, clientX, clientY){
   var orderState = { value: 'gojuon' };
   var orderRow = document.createElement('div');
   orderRow.style.cssText = 'display:flex; gap:4px; margin-bottom:6px';
-  [['gojuon', '오십음도'], ['iroha', '이로하']].forEach(function(o){
+  [['gojuon', '오십음도'], ['iroha', '이로하'], ['alphabet', '알파벳']].forEach(function(o){
     var ob = document.createElement('button');
     ob.type = 'button'; ob.textContent = o[1];
     ob.style.cssText = 'flex:1; font:inherit; font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:5px; cursor:pointer; color:var(--text); background:' + (o[0] === 'gojuon' ? 'var(--accent-soft)' : 'var(--panel-2)');
@@ -3172,7 +3205,10 @@ function graphRuleLabel(r){
   if (r.ruleType === 'same_char_dakuten') return '같은 글자 (탁점 떼기)' + (graphState.looseSmallLarge ? ' +작은⇄큰' : '');
   if (r.ruleType === 'same_vowel') return '모음 같음';
   if (r.ruleType === 'same_consonant') return '자음 같음';
-  if (r.ruleType === 'gojuon_next') return (r.order === 'iroha' ? '이로하' : '오십음도') + ' 다음' + ((r.step || 1) > 1 ? ' +' + r.step : '');
+  if (r.ruleType === 'gojuon_next'){
+    var seqName = r.order === 'iroha' ? '이로하' : r.order === 'alphabet' ? '알파벳' : '오십음도';
+    return seqName + ' 다음' + ((r.step || 1) > 1 ? ' +' + r.step : '') + (graphState.seqWrap ? ' (순환)' : '');
+  }
   return r.ruleType;
 }
 
@@ -3194,12 +3230,28 @@ function graphRenderLegend(){
     item(lineSwatch('#0891b2', true, false), '같은 글자 (탁점 떼기)') +
     item(lineSwatch('#16a34a', false, false), '모음 같음') +
     item(lineSwatch('#9333ea', false, false), '자음 같음') +
-    item(lineSwatch('#ea580c', false, true), '오십음도 다음') +
-    item(lineSwatch('#0d9488', false, true), '이로하 다음') +
+    item(lineSwatch('#ea580c', false, true), '오십음도 다음' + (graphState.seqWrap ? ' (순환)' : '')) +
+    item(lineSwatch('#0d9488', false, true), '이로하 다음' + (graphState.seqWrap ? ' (순환)' : '')) +
+    item(lineSwatch('#ca8a04', false, true), '알파벳 다음' + (graphState.seqWrap ? ' (순환)' : '')) +
     item(lineSwatch('#ef4444', true, false), '규칙 위반') +
     item('<span style="display:inline-block; width:16px; height:12px; border:1.5px dashed #0ea5e9; border-radius:3px"></span>', '작은 칸 小') +
     item('<span style="display:inline-block; width:16px; height:12px; border:1.5px dashed #7c3aed; border-radius:3px"></span>', '탁점 칸 濁') +
     item('<span style="display:inline-block; width:16px; height:12px; border:1.5px dashed #db2777; border-radius:3px"></span>', '반탁점 칸 半');
+}
+
+/** 열려 있는 규칙선 팝업의 라벨 갱신 — 전역 옵션 토글로 라벨·위반 상태가 바뀔 수 있음 */
+function graphRefreshEdgePopLabel(){
+  var pop = document.getElementById('graph-edge-pop');
+  if (!pop || pop.style.display === 'none' || graphSelectedRuleIdx === null) return;
+  var lbl = document.getElementById('graph-edge-label');
+  var r = graphState.rules[graphSelectedRuleIdx];
+  if (!lbl || !r) return;
+  var viol = !!graphEngine.ruleViol[graphSelectedRuleIdx];
+  var col = viol ? '#ef4444'
+    : (r.ruleType === 'gojuon_next' && r.order === 'iroha') ? GRAPH_RULE_DEFS.gojuon_next.colorIroha
+    : (r.ruleType === 'gojuon_next' && r.order === 'alphabet') ? GRAPH_RULE_DEFS.gojuon_next.colorAlpha
+    : ((GRAPH_RULE_DEFS[r.ruleType] || {}).color || '#888');
+  lbl.innerHTML = '<span class="graph-rule-swatch" style="background:' + col + '"></span>' + graphRuleLabel(r) + (viol ? ' · ⚠️ 위반' : '');
 }
 
 function graphSelectRule(ri, clientX, clientY){
@@ -3207,16 +3259,8 @@ function graphSelectRule(ri, clientX, clientY){
   graphRender();
   var pop = document.getElementById('graph-edge-pop');
   if (pop){
-    var lbl = document.getElementById('graph-edge-label');
-    var r = graphState.rules[ri];
-    if (lbl && r){
-      var viol = !!graphEngine.ruleViol[ri];
-      var col = viol ? '#ef4444'
-        : (r.ruleType === 'gojuon_next' && r.order === 'iroha') ? GRAPH_RULE_DEFS.gojuon_next.colorIroha
-        : ((GRAPH_RULE_DEFS[r.ruleType] || {}).color || '#888');
-      lbl.innerHTML = '<span class="graph-rule-swatch" style="background:' + col + '"></span>' + graphRuleLabel(r) + (viol ? ' · ⚠️ 위반' : '');
-    }
     pop.style.display = 'flex';
+    graphRefreshEdgePopLabel();
     var pw = pop.offsetWidth || 120;
     pop.style.left = Math.max(4, Math.min(clientX, window.innerWidth - pw - 4)) + 'px';
     pop.style.top = Math.max(4, (clientY - 52)) + 'px';
@@ -3273,6 +3317,25 @@ function graphInit() {
       graphSaveState();
       syncLoose();
       graphRender();
+      graphRefreshEdgePopLabel();
+    });
+  }
+
+  /* '다음 글자' 순환(끝→처음) 전역 토글 */
+  var wrapBtn = document.getElementById('graphWrapToggle');
+  if (wrapBtn) {
+    var syncWrap = function() {
+      wrapBtn.classList.toggle('on', !!graphState.seqWrap);
+      wrapBtn.setAttribute('aria-pressed', String(!!graphState.seqWrap));
+      wrapBtn.textContent = '순환 ん→あ: ' + (graphState.seqWrap ? '켬' : '끔');
+    };
+    syncWrap();
+    wrapBtn.addEventListener('click', function() {
+      graphState.seqWrap = !graphState.seqWrap;
+      graphSaveState();
+      syncWrap();
+      graphRender();
+      graphRefreshEdgePopLabel();
     });
   }
 
