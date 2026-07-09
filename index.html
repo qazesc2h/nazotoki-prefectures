@@ -207,9 +207,11 @@
   .graph-word-row:last-child { border-bottom: 0 !important; }
 
   /* 규칙 그래프 캔버스 (Sub-AC 2) */
-  #graph-canvas-wrap { overflow: auto; }
-  svg.graph-canvas { display: block; min-width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
-  .graph-word-box { cursor: grab; }
+  #graph-canvas-wrap { overflow: auto; overscroll-behavior: contain; }
+  /* touch-action은 드래그 대상(단어 박스)에만 — SVG 전체에 걸면 모바일 네이티브 스크롤이 막힌다 */
+  svg.graph-canvas { display: block; min-width: 100%; touch-action: pan-x pan-y; user-select: none; -webkit-user-select: none; }
+  .graph-word-box { cursor: grab; touch-action: none; }
+  .graph-edge { touch-action: none; }  /* 규칙선 탭이 팬 제스처로 먹히지 않게 (얇은 선이라 스크롤 면적 손실 없음) */
   .graph-word-box:active { cursor: grabbing; }
 
   /* 규칙 그래프 우측 단어 목록 (Sub-AC 3) */
@@ -368,8 +370,9 @@
   .shiri-legend .ln.cyc { border-top-color: #8b5cf6; }
   .shiri-legend .ln.dead { border-top: 0; border-bottom: 2px dashed #ef4444; width: 16px; }
 
-  #shiri-canvas-wrap { overflow: auto; padding: 0; min-height: 220px; position: relative; }
-  svg.shiri-canvas { display: block; min-width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #shiri-canvas-wrap { overflow: auto; overscroll-behavior: contain; padding: 0; min-height: 220px; position: relative; }
+  /* touch-action은 드래그 대상(노드)에만 — SVG 전체에 걸면 모바일 네이티브 스크롤이 막힌다 */
+  svg.shiri-canvas { display: block; min-width: 100%; touch-action: pan-x pan-y; user-select: none; -webkit-user-select: none; }
   .shiri-edge { fill: none; stroke: var(--muted); stroke-width: 1.4; opacity: .4; pointer-events: none; }
   .shiri-edge.chain { stroke: var(--accent); stroke-width: 2.6; opacity: 1; }
   .shiri-edge.cyc { stroke: #8b5cf6; stroke-width: 2; opacity: .9; }
@@ -378,7 +381,7 @@
   #shiri-mk path { fill: var(--muted); }
   #shiri-mk-chain path { fill: var(--accent); }
   #shiri-mk-cyc path { fill: #8b5cf6; }
-  .shiri-node { cursor: grab; }
+  .shiri-node { cursor: grab; touch-action: none; }
   .shiri-node-rect { fill: var(--panel); stroke: var(--border); stroke-width: 1.5; }
   .shiri-node.cyc .shiri-node-rect { stroke: #8b5cf6; }
   .shiri-node.chain .shiri-node-rect { stroke: var(--accent); stroke-width: 2.5; fill: var(--accent-soft); }
@@ -2174,6 +2177,9 @@ function graphAttachWordBoxDrag(svg, boxGroup, wordIndex) {
     };
   }
 
+  /* SVG <g>의 touch-action을 무시하는 브라우저 폴백 — 박스 터치가 스크롤로 넘어가 드래그가 끊기는 것 방지 */
+  boxGroup.addEventListener('touchstart', function(e) { e.preventDefault(); }, { passive: false });
+
   boxGroup.addEventListener('pointerdown', function(e) {
     /* 오른쪽 클릭(컨텍스트 메뉴용)은 드래그 시작하지 않음 */
     if (e.button === 2) return;
@@ -3845,15 +3851,33 @@ function shiriRenderGraph(wrap, model, chain, showChain){
 
   /* --- 자동 배치 (드래그로 옮긴 노드는 저장 위치로 덮어쓴다) --- */
   const auto = {};
-  let x = M.pad, chainBottom = M.pad;
-  chainArr.forEach(idx => { auto[idx] = { x: x, y: M.pad }; x += node[idx].w + M.gapX; chainBottom = Math.max(chainBottom, M.pad + node[idx].h); });
-  const chainRight = chainArr.length ? (x - M.gapX + M.pad) : M.pad;
+  /* 체인도 컨테이너 폭 안에서 줄바꿈 — 한 줄로 깔면 모바일에서 가로 overflow가 됨.
+     홀수 줄은 오른쪽부터(지그재그) 배치해 줄 끝↔다음 줄 시작 이음선이 짧게 이어지도록 한다 */
+  const chainRows = [];
+  {
+    let cur = [], curW = 0;
+    chainArr.forEach(idx => {
+      const need = node[idx].w + (cur.length ? M.gapX : 0);
+      if (cur.length && curW + need > containerW - M.pad * 2){ chainRows.push(cur); cur = [idx]; curW = node[idx].w; }
+      else { cur.push(idx); curW += need; }
+    });
+    if (cur.length) chainRows.push(cur);
+  }
+  let cy = M.pad, chainBottom = M.pad;
+  chainRows.forEach((row, r) => {
+    const items = (r % 2 === 1) ? row.slice().reverse() : row;
+    /* 역순(홀수) 줄은 오른쪽 정렬 — 줄이 덜 차도 윗줄 끝 바로 아래에서 이어진다 */
+    const rowW = items.reduce((s, idx, k) => s + node[idx].w + (k ? M.gapX : 0), 0);
+    let x = (r % 2 === 1) ? Math.max(M.pad, containerW - M.pad - rowW) : M.pad, rowH = 0;
+    items.forEach(idx => { auto[idx] = { x: x, y: cy }; x += node[idx].w + M.gapX; rowH = Math.max(rowH, node[idx].h); });
+    chainBottom = Math.max(chainBottom, cy + rowH);
+    cy += rowH + M.gapY;
+  });
   const others = [];
   for (let i = 0; i < n; i++) if (!chainSet.has(i)) others.push(i);
-  const wrapW = Math.max(containerW, chainRight);
   let gx = M.pad, gy = chainArr.length ? (chainBottom + Math.round(M.gapY * 1.5)) : M.pad, rowH = 0;
   others.forEach(idx => {
-    if (gx > M.pad && gx + node[idx].w > wrapW - M.pad){ gx = M.pad; gy += rowH + M.gapY; rowH = 0; }
+    if (gx > M.pad && gx + node[idx].w > containerW - M.pad){ gx = M.pad; gy += rowH + M.gapY; rowH = 0; }
     auto[idx] = { x: gx, y: gy };
     gx += node[idx].w + M.gapX; rowH = Math.max(rowH, node[idx].h);
   });
@@ -3986,6 +4010,8 @@ function shiriRenderGraph(wrap, model, chain, showChain){
       let dragging = false, moved = false, startCX = 0, startCY = 0, startX = 0, startY = 0;
       g.addEventListener('mouseenter', () => { if (!dragging) setHl(idx, true); });
       g.addEventListener('mouseleave', () => { if (!dragging) setHl(idx, false); });
+      /* SVG <g>의 touch-action을 무시하는 브라우저 폴백 — 노드 터치가 스크롤로 넘어가 드래그가 끊기는 것 방지 */
+      g.addEventListener('touchstart', function(e){ e.preventDefault(); }, { passive: false });
       g.addEventListener('pointerdown', function(e){
         if (e.button === 2) return;
         e.preventDefault(); e.stopPropagation();
