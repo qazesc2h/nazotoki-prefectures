@@ -541,6 +541,7 @@
       <button class="btn" id="graphConnectToggle" aria-pressed="false">🔗 규칙 연결: 끔</button>
       <button class="btn" id="graphLooseToggle" aria-pressed="false" title="같은 글자 규칙에서 작은 글자(ぁゃっ)와 큰 글자(あやつ)를 같은 글자로 취급">작은⇄큰 같은 글자: 끔</button>
       <button class="btn" id="graphWrapToggle" aria-pressed="false" title="'다음 글자' 규칙이 순서의 끝을 넘으면 처음으로 순환 (ん→あ, 이로하 す→い, 알파벳 z→a)">순환 ん→あ: 끔</button>
+      <button class="btn on" id="graphEdgesToggle" aria-pressed="true" title="규칙선을 잠시 숨겨 단어 읽기·새 규칙 연결을 편하게 합니다 (규칙·추론은 그대로 유지)">규칙선 표시: 켬</button>
       <span class="hint" id="graphConnectHint" style="display:none">셀에서 다른 셀로 드래그해 규칙을 만드세요</span>
       <div class="spacer"></div>
       <button class="btn" id="graphClearAll">전체 삭제</button>
@@ -1822,6 +1823,7 @@ let graphState = {
   positions: {},   /* {[cellId]: {x, y}} — 후속 AC에서 채워짐 */
   looseSmallLarge: false,  /* 전역: 같은 글자 규칙에서 작은⇄큰을 같은 글자로 취급 */
   seqWrap: false,          /* 전역: '다음 글자' 규칙이 순서의 끝을 넘으면 처음으로 순환 (ん→あ 등) */
+  showEdges: true,         /* 전역: 규칙선 표시 여부 — 끄면 선만 숨기고 규칙·추론은 유지 */
 };
 
 function graphLoadState() {
@@ -1835,6 +1837,7 @@ function graphLoadState() {
     graphState.positions = (parsed.positions && typeof parsed.positions === 'object') ? parsed.positions : {};
     graphState.looseSmallLarge = !!parsed.looseSmallLarge;
     graphState.seqWrap = !!parsed.seqWrap;
+    graphState.showEdges = parsed.showEdges !== false;  /* 필드 없던 구버전 저장분은 표시(기본값) */
     /* 레거시 same_char_sl 규칙 → same_char 로 통합 */
     graphState.rules.forEach(function(r){ if (r.ruleType === 'same_char_sl') r.ruleType = 'same_char'; });
     /* 레거시 smallOnly → cellType */
@@ -1863,6 +1866,7 @@ function graphSaveState() {
     positions: graphState.positions,
     looseSmallLarge: graphState.looseSmallLarge,
     seqWrap: graphState.seqWrap,
+    showEdges: graphState.showEdges,
   };
   localStorage.setItem(LS_GRAPH, JSON.stringify(toSave));
 }
@@ -2562,7 +2566,7 @@ function graphInitForm() {
     clearBtn.addEventListener('click', function() {
       if (!graphState.words.length) return;
       if (!confirm('모든 단어와 규칙을 삭제하시겠습니까?')) return;
-      graphState = { words: [], rules: [], positions: {}, looseSmallLarge: graphState.looseSmallLarge, seqWrap: graphState.seqWrap };
+      graphState = { words: [], rules: [], positions: {}, looseSmallLarge: graphState.looseSmallLarge, seqWrap: graphState.seqWrap, showEdges: graphState.showEdges };
       graphSaveState();
       graphRender();
     });
@@ -2879,6 +2883,8 @@ function graphRenderEdges(){
   if (!svg) return;
   /* 기존 에지 제거 (중복 방지 — 단독 호출 가능) */
   svg.querySelectorAll('g.graph-edge').forEach(function(g){ g.remove(); });
+  /* 규칙선 숨김 모드: 선만 그리지 않음 (규칙·추론·셀 표시는 유지) */
+  if (graphState.showEdges === false) return;
   /* arrowhead marker (gojuon_next 방향용) 1회 정의 */
   if (!svg.querySelector('defs#graph-defs')){
     var defs = document.createElementNS(NS, 'defs');
@@ -3342,6 +3348,24 @@ function graphInit() {
       syncWrap();
       graphRender();
       graphRefreshEdgePopLabel();
+    });
+  }
+
+  /* 규칙선 표시/숨김 전역 토글 — 숨겨도 규칙·추론은 유지 */
+  var edgesBtn = document.getElementById('graphEdgesToggle');
+  if (edgesBtn) {
+    var syncEdges = function() {
+      edgesBtn.classList.toggle('on', graphState.showEdges !== false);
+      edgesBtn.setAttribute('aria-pressed', String(graphState.showEdges !== false));
+      edgesBtn.textContent = '규칙선 표시: ' + (graphState.showEdges !== false ? '켬' : '끔');
+    };
+    syncEdges();
+    edgesBtn.addEventListener('click', function() {
+      graphState.showEdges = graphState.showEdges === false;
+      graphSaveState();
+      syncEdges();
+      if (graphState.showEdges === false) graphClearRuleSelection();  /* 선이 없으면 선택·팝업도 닫기 */
+      graphRender();
     });
   }
 
