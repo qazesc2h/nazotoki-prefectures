@@ -4,8 +4,8 @@
     {
       "name": "nazotoki-preview",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8791"],
-      "port": 8791
+      "runtimeArgs": ["-m", "http.server", "8917"],
+      "port": 8917
     }
   ]
 }
