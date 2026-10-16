@@ -9,8 +9,8 @@
     },
     {
       "name": "nazotoki-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "8918"],
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "--port", "8918"],
       "port": 8918
     }
   ]

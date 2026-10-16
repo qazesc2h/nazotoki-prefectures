@@ -28,15 +28,18 @@ python3 -m http.server 8917
 
 ## 개발
 
+패키지 매니저는 **pnpm** 을 씁니다(`package.json` 의 `packageManager` 에 버전 고정). Node 20 이상에서 `corepack enable` 한 번이면 맞는 pnpm 이 자동으로 쓰입니다.
+
 ```bash
-npm install
-npm run dev        # Vite 개발 서버 (src/ 를 바로 띄움, 수정 즉시 반영) → http://localhost:8917
-npm run check      # 타입체크 + 단위 테스트 + 빌드 (커밋 전에 한 번)
-npm run build      # src/ → 루트 index.html 한 파일로 번들 (CSS·JS·지도 SVG 인라인)
-npm test           # vitest — 순수 함수 단위 테스트
+corepack enable    # 최초 1회 (pnpm 이 없을 때)
+pnpm install
+pnpm dev           # Vite 개발 서버 (src/ 를 바로 띄움, 수정 즉시 반영) → http://localhost:8917
+pnpm check         # 타입체크 + 단위 테스트 + 빌드 (커밋 전에 한 번)
+pnpm build         # src/ → 루트 index.html 한 파일로 번들 (CSS·JS·지도 SVG 인라인)
+pnpm test          # vitest — 순수 함수 단위 테스트
 ```
 
-> **루트 `index.html` 은 생성 파일입니다.** 직접 고치지 말고 `src/` 를 고친 뒤 `npm run build` 로 다시 만들어 함께 커밋하세요.
+> **루트 `index.html` 은 생성 파일입니다.** 직접 고치지 말고 `src/` 를 고친 뒤 `pnpm build` 로 다시 만들어 함께 커밋하세요.
 
 ### 구조
 
