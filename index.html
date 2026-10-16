@@ -17,7 +17,6 @@
     --land: #7cb342;            /* the "green land" fill */
     --land-stroke: #ffffff;
     --land-hover: #ffb300;
-    --land-active: #ef6c00;
     --struck: #c4ccc4;          /* dimmed/struck color */
     --struck-text: #9aa39a;
     --link: #2e7d32;
@@ -163,14 +162,13 @@
   }
   svg.fullmap.region-color .prefecture polygon, svg.fullmap.region-color .prefecture path { fill: var(--rfill, var(--land)); }
   svg.fullmap .prefecture:hover polygon, svg.fullmap .prefecture:hover path { fill: var(--land-hover); }
-  svg.fullmap .prefecture.sel polygon, svg.fullmap .prefecture.sel path { fill: var(--land-active); }
   svg.fullmap .prefecture.struck polygon, svg.fullmap .prefecture.struck path { fill: var(--struck); }
   svg.fullmap .boundary-line { display: none; }   /* hide geolonia inset connector lines for a cleaner look */
   svg.fullmap .plabel { font-family: var(--jp); fill: var(--text); font-weight: 700; text-anchor: middle; dominant-baseline: middle;
     paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; vector-effect: non-scaling-stroke;
     pointer-events: none; opacity: 0; transition: opacity .1s; }
   svg.fullmap.show-labels .plabel { opacity: 1; }
-  svg.fullmap .plabel.pinned { opacity: 1; }
+  svg.fullmap .prefecture.struck .plabel, svg.fullmap .plabel.struck { fill: var(--struck-text); text-decoration: line-through; }
   .tooltip {
     position: fixed; z-index: 50; pointer-events: none; background: var(--text); color: var(--bg);
     padding: 6px 10px; border-radius: 8px; font-size: 13px; line-height: 1.35; box-shadow: var(--shadow);
@@ -526,9 +524,7 @@
     <div class="panel map-controls">
       <label class="checkbox"><input type="checkbox" id="mapLabels" checked /> 이름 표시</label>
       <label class="checkbox"><input type="checkbox" id="mapRegionColor" /> 지역별 색</label>
-      <span class="hint" id="mapHint">땅을 클릭하면 그 땅의 이름 라벨이 <b>고정</b>(「이름 표시」를 꺼도 보임)되고 주황색으로 강조됩니다. 호버하면 상세정보. 후보 제외용 <b>가리기</b>(회색)는 검색·전체 보기·모양 탭에서 카드를 클릭하세요.</span>
-      <div class="spacer"></div>
-      <button class="btn" id="mapClearPins">고정 라벨 해제</button>
+      <span class="hint" id="mapHint">땅을 클릭하면 회색으로 <b>가려집니다</b>(다른 탭과 동일 · 모든 탭에 반영). 호버하면 상세정보가 나옵니다.</span>
     </div>
     <div class="panel map-stage" id="mapStage"></div>
   </section>
@@ -1088,7 +1084,7 @@ const els = {
   kanaToggle: $('#kanaToggle'), kanaToggleAll: $('#kanaToggleAll'), kanaToggleGal: $('#kanaToggleGal'),
   searchCount: $('#searchCount'), searchResults: $('#searchResults'),
   allView: $('#allView'), allResults: $('#allResults'),
-  mapStage: $('#mapStage'), mapLabels: $('#mapLabels'), mapRegionColor: $('#mapRegionColor'), mapClearPins: $('#mapClearPins'),
+  mapStage: $('#mapStage'), mapLabels: $('#mapLabels'), mapRegionColor: $('#mapRegionColor'),
   galWrap: $('#galWrap'), galSort: $('#galSort'),
   tooltip: $('#tooltip'),
   sections: {
@@ -1307,10 +1303,8 @@ function buildMap(){
     g.addEventListener('mousemove', ev => showTip(ev, d));
     g.addEventListener('mouseenter', ev => showTip(ev, d));
     g.addEventListener('mouseleave', hideTip);
-    g.addEventListener('click', () => {
-      svg.querySelectorAll('.plabel[data-code="' + d.code + '"]').forEach(l => l.classList.toggle('pinned'));
-      g.classList.toggle('sel');
-    });
+    /* 클릭 = 가리기 (검색·전체 보기·모양 탭과 동일한 전역 상태) */
+    g.addEventListener('click', () => { toggleStruck(d.code); showTip({ clientX: lastTipX, clientY: lastTipY }, d); });
   });
   mapBuilt = true;
   updateMapLabels();
@@ -1330,9 +1324,12 @@ function applyStruckToMap(){
   DATA.forEach(d => {
     const g = svg.querySelector('g.prefecture[data-code="' + d.code + '"]');
     if (g) g.classList.toggle('struck', isStruck(d.code));
+    svg.querySelectorAll('.plabel[data-code="' + d.code + '"]').forEach(t => t.classList.toggle('struck', isStruck(d.code)));
   });
 }
+let lastTipX = 0, lastTipY = 0;
 function showTip(ev, d){
+  lastTipX = ev.clientX; lastTipY = ev.clientY;
   const f = F(d, state.mode);
   let html = '<b>' + f.main + '</b> <span class="t-kana">' + f.kana + '</span><br>'
     + '<span style="opacity:.8">' + f.romaji + ' · ' + d.region + ' · #' + d.code + '</span>';
@@ -1551,10 +1548,6 @@ els.kanaToggleAll.addEventListener('change', () => setKanaFirst(els.kanaToggleAl
 els.kanaToggleGal.addEventListener('change', () => setKanaFirst(els.kanaToggleGal.checked));
 els.mapLabels.addEventListener('change', updateMapLabels);
 els.mapRegionColor.addEventListener('change', updateMapLabels);
-els.mapClearPins.addEventListener('click', () => {
-  els.mapStage.querySelectorAll('.plabel.pinned').forEach(t => t.classList.remove('pinned'));
-  els.mapStage.querySelectorAll('.prefecture.sel').forEach(g => g.classList.remove('sel'));
-});
 els.galSort.addEventListener('change', renderGallery);
 
 /* ========================================================================
