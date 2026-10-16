@@ -17,7 +17,6 @@
     --land: #7cb342;            /* the "green land" fill */
     --land-stroke: #ffffff;
     --land-hover: #ffb300;
-    --land-active: #ef6c00;
     --struck: #c4ccc4;          /* dimmed/struck color */
     --struck-text: #9aa39a;
     --link: #2e7d32;
@@ -126,6 +125,12 @@
   .card .code { position: absolute; top: 8px; right: 10px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .card .main { font-size: 19px; font-weight: 700; letter-spacing: .01em; }
   .card .kana { font-size: 13px; color: var(--muted); margin-top: 1px; }
+  /* 현청소재지 모드: 어느 도도부현의 현청인지 한 줄로 (간단 보기에서도 항상) */
+  .card .pair { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 5px; }
+  .card .pair::before { content: '⌂'; font-size: 11px; opacity: .7; }
+  .card .pair.neq { color: var(--text); font-weight: 600; }
+  .is-struck .pair { color: var(--struck-text) !important; }
+  .tile .tile-name .p { font-size: 11px; color: var(--muted); }
   .card .sub { font-size: 12.5px; color: var(--muted); margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
   .badge { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); }
   .badge.region { background: var(--rcolor-soft, var(--panel-2)); border-color: transparent; color: var(--rtext, var(--muted)); font-weight: 600; }
@@ -157,14 +162,13 @@
   }
   svg.fullmap.region-color .prefecture polygon, svg.fullmap.region-color .prefecture path { fill: var(--rfill, var(--land)); }
   svg.fullmap .prefecture:hover polygon, svg.fullmap .prefecture:hover path { fill: var(--land-hover); }
-  svg.fullmap .prefecture.sel polygon, svg.fullmap .prefecture.sel path { fill: var(--land-active); }
   svg.fullmap .prefecture.struck polygon, svg.fullmap .prefecture.struck path { fill: var(--struck); }
   svg.fullmap .boundary-line { display: none; }   /* hide geolonia inset connector lines for a cleaner look */
   svg.fullmap .plabel { font-family: var(--jp); fill: var(--text); font-weight: 700; text-anchor: middle; dominant-baseline: middle;
     paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; vector-effect: non-scaling-stroke;
     pointer-events: none; opacity: 0; transition: opacity .1s; }
   svg.fullmap.show-labels .plabel { opacity: 1; }
-  svg.fullmap .plabel.pinned { opacity: 1; }
+  svg.fullmap .prefecture.struck .plabel, svg.fullmap .plabel.struck { fill: var(--struck-text); text-decoration: line-through; }
   .tooltip {
     position: fixed; z-index: 50; pointer-events: none; background: var(--text); color: var(--bg);
     padding: 6px 10px; border-radius: 8px; font-size: 13px; line-height: 1.35; box-shadow: var(--shadow);
@@ -263,6 +267,20 @@
     background: var(--accent-soft);
     border-radius: 3px 3px 0 0;
   }
+  /* 단어 입력 모드 (단어 목록에서 단어 전체를 한 번에 입력) */
+  .graph-word-row.editing .graph-word-blanks { pointer-events: none; opacity: .55; }
+  .graph-word-edit { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+  .graph-word-edit input[type=text] {
+    flex: 1 1 110px; min-width: 0; font: inherit; font-size: 16px; font-family: var(--jp);
+    padding: 6px 9px; border: 2px solid var(--accent); border-radius: 7px;
+    background: var(--panel-2); color: var(--text); outline: none; letter-spacing: .08em;
+  }
+  .graph-word-edit .btn { font-size: 12px; padding: 5px 9px; }
+  .graph-word-edit .hint { flex: 1 1 100%; margin: 0; font-size: 11px; }
+  .graph-word-tools { display: flex; align-items: center; gap: 4px; }
+  .graph-word-tools .btn { font-size: 11px; padding: 2px 7px; flex-shrink: 0; }
+  .graph-word-tools .btn.on { background: var(--accent); color: #3a2a00; font-weight: 700; border-color: var(--accent); }
+  @media (prefers-color-scheme: dark){ .graph-word-tools .btn.on { color: #1a1205; } }
 
   /* Sub-AC 5: 셀 편집기 플로팅 입력 */
   #graph-cell-editor {
@@ -363,6 +381,11 @@
   .shiri-arrow { display: inline-flex; flex-direction: column; align-items: center; color: var(--accent); font-weight: 700; line-height: 1; padding: 0 1px; }
   .shiri-arrow .lk { font-size: 10px; color: var(--muted); font-weight: 600; margin-bottom: 1px; }
   .shiri-empty { color: var(--muted); font-size: 13px; }
+  /* 최장 체인이 여러 가지일 때 좌우로 넘기는 내비게이션 */
+  .shiri-alt-nav { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .shiri-alt-nav .btn { padding: 3px 9px; font-size: 13px; line-height: 1.2; }
+  .shiri-alt-nav b { color: var(--text); font-weight: 700; }
+  .shiri-result .baba-result-head { flex-wrap: wrap; }
 
   .shiri-legend { display: flex; flex-wrap: wrap; gap: 5px 16px; font-size: 12px; color: var(--muted); padding: 4px 2px 10px; align-items: center; }
   .shiri-legend .ln { display: inline-block; width: 22px; border-top: 3px solid var(--muted); margin-right: 6px; vertical-align: middle; }
@@ -452,6 +475,7 @@
           <option value="kana">읽기(かな)</option>
           <option value="kanji">한자</option>
           <option value="romaji">로마자</option>
+          <option value="pair" id="fieldPairOpt" title="현청소재지 모드에서는 소속 도도부현 이름으로, 도도부현 모드에서는 현청소재지 이름으로 찾습니다">짝 이름(현청소재지)</option>
         </select>
       </div>
       <div class="field">
@@ -500,9 +524,7 @@
     <div class="panel map-controls">
       <label class="checkbox"><input type="checkbox" id="mapLabels" checked /> 이름 표시</label>
       <label class="checkbox"><input type="checkbox" id="mapRegionColor" /> 지역별 색</label>
-      <span class="hint" id="mapHint">땅을 클릭하면 이름이 고정되고, 호버하면 상세정보가 나옵니다.</span>
-      <div class="spacer"></div>
-      <button class="btn" id="mapClearPins">고정 라벨 해제</button>
+      <span class="hint" id="mapHint">땅을 클릭하면 회색으로 <b>가려집니다</b>(다른 탭과 동일 · 모든 탭에 반영). 호버하면 상세정보가 나옵니다.</span>
     </div>
     <div class="panel map-stage" id="mapStage"></div>
   </section>
@@ -634,6 +656,11 @@
       <div class="baba-result-head">
         <span class="baba-result-title">가장 긴 시리토리</span>
         <span class="baba-surv-count" id="shiri-stats"></span>
+        <span class="shiri-alt-nav hidden" id="shiri-alt-nav" title="같은 길이의 다른 시리토리 순서를 좌우로 넘겨 봅니다 (순환으로 시작점만 다른 것은 하나로 묶음)">
+          <button class="btn" id="shiri-alt-prev" type="button" aria-label="이전 경우">◀</button>
+          <span id="shiri-alt-label"><b>1</b> / 1</span>
+          <button class="btn" id="shiri-alt-next" type="button" aria-label="다음 경우">▶</button>
+        </span>
       </div>
       <div class="shiri-chain" id="shiri-chain"></div>
     </div>
@@ -666,7 +693,7 @@
 
 <div class="tooltip" id="tooltip"></div>
 <!-- Sub-AC 5: 셀 편집기 플로팅 입력 (캔버스 셀 + 목록 슬롯 공용) -->
-<input type="text" id="graph-cell-editor" maxlength="4"
+<input type="text" id="graph-cell-editor" maxlength="8"
   autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" />
 <!-- 규칙 종류 선택 메뉴 (셀→셀 연결 후) -->
 <div id="graph-rule-menu"></div>
@@ -1057,7 +1084,7 @@ const els = {
   kanaToggle: $('#kanaToggle'), kanaToggleAll: $('#kanaToggleAll'), kanaToggleGal: $('#kanaToggleGal'),
   searchCount: $('#searchCount'), searchResults: $('#searchResults'),
   allView: $('#allView'), allResults: $('#allResults'),
-  mapStage: $('#mapStage'), mapLabels: $('#mapLabels'), mapRegionColor: $('#mapRegionColor'), mapClearPins: $('#mapClearPins'),
+  mapStage: $('#mapStage'), mapLabels: $('#mapLabels'), mapRegionColor: $('#mapRegionColor'),
   galWrap: $('#galWrap'), galSort: $('#galSort'),
   tooltip: $('#tooltip'),
   sections: {
@@ -1084,6 +1111,11 @@ function makeCard(d){
     '<span class="code">' + d.code + '</span>' +
     '<div class="main">' + big + '</div>' +
     '<div class="kana">' + small + '</div>';
+
+  /* 현청소재지 모드: 간단 보기에서도 소속 도도부현을 한 줄로 (자세히 보기에서는 아래 배지로 표시) */
+  if (state.mode === 'cap' && !state.detail) {
+    html += '<div class="pair' + (d.capNeq ? ' neq' : '') + '" title="' + d.kanji + '의 현청소재지">' + d.kanji + '</div>';
+  }
 
   if (state.detail) {
     let subHtml = '<span class="badge region">' + d.region + '</span>'
@@ -1118,6 +1150,10 @@ function runSearch(){
   const lenF = els.lenFilter.value ? Number(els.lenFilter.value) : null;
   const isRomaji = field === 'romaji';
 
+  /* 「짝 이름」: 현청소재지 모드에서는 소속 도도부현, 도도부현 모드에서는 현청소재지 이름으로 찾는다
+     (현청↔도도부현 변환 문제용). 글자수 필터·카드 표시는 현재 모드 기준 그대로. */
+  const pairMode = state.mode === 'cap' ? 'pref' : 'cap';
+
   let list = DATA.filter(d => {
     const f = F(d, state.mode);
     if (lenF != null && f.len !== lenF) return false;
@@ -1126,6 +1162,7 @@ function runSearch(){
     if (field === 'all' || field === 'kana')   { test.push(f.kana); }
     if (field === 'all' || field === 'kanji')  { test.push(f.kanji); test.push(f.nameBare); }
     if (field === 'all' || field === 'romaji') { test.push(f.romaji); }
+    if (field === 'pair') { const p = F(d, pairMode); test.push(p.kana, p.kanji, p.nameBare, p.romaji); }
     return test.some(v => {
       if (v == null) return false;
       let s = v;
@@ -1148,7 +1185,9 @@ function runSearch(){
     els.searchResults.appendChild(frag);
   }
   els.searchCount.textContent = list.length + '건';
-  els.qScope.textContent = state.mode === 'cap' ? '(현청 かな·한자·로마자)' : '(かな·한자·로마자)';
+  els.qScope.textContent = field === 'pair'
+    ? (state.mode === 'cap' ? '(소속 도도부현 이름으로 찾기)' : '(현청소재지 이름으로 찾기)')
+    : (state.mode === 'cap' ? '(현청 かな·한자·로마자)' : '(かな·한자·로마자)');
 }
 
 /* ---------- ALL (groups) ---------- */
@@ -1264,10 +1303,8 @@ function buildMap(){
     g.addEventListener('mousemove', ev => showTip(ev, d));
     g.addEventListener('mouseenter', ev => showTip(ev, d));
     g.addEventListener('mouseleave', hideTip);
-    g.addEventListener('click', () => {
-      svg.querySelectorAll('.plabel[data-code="' + d.code + '"]').forEach(l => l.classList.toggle('pinned'));
-      g.classList.toggle('sel');
-    });
+    /* 클릭 = 가리기 (검색·전체 보기·모양 탭과 동일한 전역 상태) */
+    g.addEventListener('click', () => { toggleStruck(d.code); showTip({ clientX: lastTipX, clientY: lastTipY }, d); });
   });
   mapBuilt = true;
   updateMapLabels();
@@ -1287,9 +1324,12 @@ function applyStruckToMap(){
   DATA.forEach(d => {
     const g = svg.querySelector('g.prefecture[data-code="' + d.code + '"]');
     if (g) g.classList.toggle('struck', isStruck(d.code));
+    svg.querySelectorAll('.plabel[data-code="' + d.code + '"]').forEach(t => t.classList.toggle('struck', isStruck(d.code)));
   });
 }
+let lastTipX = 0, lastTipY = 0;
 function showTip(ev, d){
+  lastTipX = ev.clientX; lastTipY = ev.clientY;
   const f = F(d, state.mode);
   let html = '<b>' + f.main + '</b> <span class="t-kana">' + f.kana + '</span><br>'
     + '<span style="opacity:.8">' + f.romaji + ' · ' + d.region + ' · #' + d.code + '</span>';
@@ -1337,7 +1377,8 @@ function renderGallery(){
       tile.appendChild(Object.assign(document.createElement('span'), {className:'code', textContent:d.code}));
       tile.appendChild(buildSilhouetteSvg(d.code));
       const nm = document.createElement('div'); nm.className = 'tile-name';
-      nm.innerHTML = '<span class="k">' + (state.kanaFirst ? f.kana : f.main) + '</span><span class="r">' + (state.kanaFirst ? f.main : f.kana) + '</span>';
+      nm.innerHTML = '<span class="k">' + (state.kanaFirst ? f.kana : f.main) + '</span><span class="r">' + (state.kanaFirst ? f.main : f.kana) + '</span>'
+        + (state.mode === 'cap' ? '<span class="p">⌂ ' + d.kanji + '</span>' : '');   /* 현청소재지 모드: 소속 도도부현 */
       tile.appendChild(nm);
       tile.addEventListener('click', () => toggleStruck(d.code));
       gal.appendChild(tile);
@@ -1468,6 +1509,9 @@ function setMode(mode){
   localStorage.setItem(LS_MODE, mode);
   els.modeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
   syncModeToggleLabel();
+  /* 검색 대상 「짝 이름」 라벨: 모드에 따라 반대쪽 이름을 가리킴 */
+  const pairOpt = document.getElementById('fieldPairOpt');
+  if (pairOpt) pairOpt.textContent = mode === 'cap' ? '짝 이름(소속 도도부현)' : '짝 이름(현청소재지)';
   rebuildLenFilter();
   renderActiveTab();
   // keep other prebuilt views in sync with mode
@@ -1504,10 +1548,6 @@ els.kanaToggleAll.addEventListener('change', () => setKanaFirst(els.kanaToggleAl
 els.kanaToggleGal.addEventListener('change', () => setKanaFirst(els.kanaToggleGal.checked));
 els.mapLabels.addEventListener('change', updateMapLabels);
 els.mapRegionColor.addEventListener('change', updateMapLabels);
-els.mapClearPins.addEventListener('click', () => {
-  els.mapStage.querySelectorAll('.plabel.pinned').forEach(t => t.classList.remove('pinned'));
-  els.mapStage.querySelectorAll('.prefecture.sel').forEach(g => g.classList.remove('sel'));
-});
 els.galSort.addEventListener('change', renderGallery);
 
 /* ========================================================================
@@ -1607,7 +1647,7 @@ function graphRemoveWord(words, rules, targetIndex) {
       index: newIdx,
       charCount: w.charCount,
       letters: w.letters.map(function(l, s) {
-        return { cellId: newIdx + '-' + s, char: l.char, source: l.source };
+        return { cellId: newIdx + '-' + s, char: l.char, source: l.source, cellType: l.cellType || '' };
       }),
     };
   });
@@ -1634,6 +1674,78 @@ function graphRemoveWord(words, rules, targetIndex) {
     });
 
   return { words: newWords, rules: newRules };
+}
+
+/**
+ * 단어에 걸린(양 끝 중 하나가 이 단어의 칸인) 규칙 수. 삭제 확인 문구용.
+ * @param {Array} rules
+ * @param {number} wordIndex
+ * @returns {number}
+ */
+function graphCountWordRules(rules, wordIndex) {
+  const prefix = String(wordIndex) + '-';
+  return (rules || []).filter(function(r) {
+    return String(r.sourceCell).indexOf(prefix) === 0 || String(r.targetCell).indexOf(prefix) === 0;
+  }).length;
+}
+
+/* ---- 단어 입력 모드 (단어 전체를 한 번에 입력) ---- */
+
+/* 빈 칸을 뜻하는 자리표시 글자: 입력에서 이 글자는 '빈 칸(지움)'으로 해석한다 */
+var GRAPH_BLANK_CHARS = '＿_？?○〇◯＊*・･';
+var GRAPH_BLANK_SHOW = '＿';
+
+/**
+ * 단어의 사용자 입력 글자를 한 줄 텍스트로 (빈 칸은 ＿). 추론값은 포함하지 않는다
+ * — 저장 시 추론값이 사용자 입력으로 굳어지지 않도록.
+ * @param {{letters: Array}} w
+ * @returns {string}
+ */
+function graphWordUserText(w) {
+  return (w.letters || []).map(function(l) { return (l.source === 'user' && l.char) ? l.char : GRAPH_BLANK_SHOW; }).join('');
+}
+
+/**
+ * 단어 입력 모드 텍스트를 칸별 글자 배열로 분해한다 (빈 칸 자리표시 → '').
+ * 카타카나→히라가나, 전각 영문→반각, 공백류 제거. 코드포인트 단위.
+ * @param {string} text
+ * @returns {string[]} 각 원소는 글자 1개 또는 ''(빈 칸)
+ */
+function graphParseWordInput(text) {
+  const norm = toAsciiLetters(kataToHira(String(text == null ? '' : text)));
+  return Array.from(norm)
+    .filter(function(c) { return !/\s/.test(c); })
+    .map(function(c) { return GRAPH_BLANK_CHARS.indexOf(c) >= 0 ? '' : c; });
+}
+
+/**
+ * 단어 입력 모드 저장 (불변, 순수 함수).
+ * - 입력 글자 수 > 칸 수: 칸을 늘린다(기존 규칙은 그대로 유효).
+ * - 입력 글자 수 < 칸 수: 뒤쪽 칸은 빈 칸으로 비운다(칸은 유지).
+ * - 칸 타입(小/濁/半)은 유지하고 글자를 그 형태로 변환한다.
+ * 결과 칸 수가 1~12 범위를 벗어나면 null.
+ * @param {Array} words
+ * @param {number} wordIndex
+ * @param {string[]} chars - graphParseWordInput 결과
+ * @returns {Array|null}
+ */
+function graphApplyWordChars(words, wordIndex, chars) {
+  const w = words.find(function(x) { return x.index === wordIndex; });
+  if (!w) return null;
+  const n = Math.max(w.charCount, chars.length);
+  if (!graphValidateCharCount(n)) return null;
+  const letters = [];
+  for (let s = 0; s < n; s++) {
+    const old = w.letters[s];
+    const type = old ? (old.cellType || '') : '';
+    let ch = chars[s] || '';
+    if (ch && type) ch = graphCellTypeConvert(ch, type);
+    letters.push({ cellId: wordIndex + '-' + s, char: ch, source: 'user', cellType: type });
+  }
+  return words.map(function(x) {
+    if (x.index !== wordIndex) return x;
+    return { index: x.index, charCount: n, letters: letters };
+  });
 }
 
 /* ================================================================
@@ -1881,9 +1993,10 @@ function graphSaveState() {
  * DOM 렌더링 테스트에서 직접 호출 가능하다.
  *
  * @param {Array} words  - graphState.words 형태의 단어 배열
+ * @param {{index:number, draft:(string|null)}|null} [edit] - 단어 입력 모드가 열린 단어(있으면 그 행에 입력창)
  * @returns {HTMLElement} - 렌더링된 패널 컨테이너 요소
  */
-function graphBuildWordListEl(words) {
+function graphBuildWordListEl(words, edit) {
   const container = document.createElement('div');
   if (!words.length) {
     const empty = document.createElement('p');
@@ -1905,12 +2018,13 @@ function graphBuildWordListEl(words) {
   panel.appendChild(hdr);
 
   words.forEach(function(w) {
+    const isEditing = !!(edit && edit.index === w.index);
     const row = document.createElement('div');
-    row.className = 'graph-word-row';
+    row.className = 'graph-word-row' + (isEditing ? ' editing' : '');
     row.setAttribute('data-word-index', String(w.index));
     row.style.cssText = 'padding:6px 0; border-bottom:1px solid var(--border)';
 
-    /* 단어 헤더: "W0  3자  [삭제]" */
+    /* 단어 헤더: "W0  3자  [✎ 단어 입력] [삭제]" */
     const rowHdr = document.createElement('div');
     rowHdr.style.cssText = 'display:flex; align-items:center; justify-content:flex-end; margin-bottom:2px';
 
@@ -1925,14 +2039,27 @@ function graphBuildWordListEl(words) {
     cnt.textContent = w.charCount + '자';
     rowHdr.appendChild(cnt);
 
+    const tools = document.createElement('span');
+    tools.className = 'graph-word-tools';
+
+    /* 단어 입력 모드 토글 — 이벤트 핸들러는 graphRenderWordList에서 부착 */
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'btn' + (isEditing ? ' on' : '');
+    editBtn.dataset.editWord = String(w.index);
+    editBtn.title = '단어 전체를 한 번에 입력합니다 (한 글자씩 누르지 않아도 됨)';
+    editBtn.textContent = '✎ 단어 입력';
+    tools.appendChild(editBtn);
+
     /* 삭제 버튼 — 이벤트 핸들러는 graphRenderWordList에서 부착 */
     const del = document.createElement('button');
+    del.type = 'button';
     del.className = 'btn';
     del.dataset.delWord = String(w.index);
-    del.style.cssText = 'font-size:11px; padding:2px 7px; flex-shrink:0';
     del.textContent = '삭제';
-    rowHdr.appendChild(del);
+    tools.appendChild(del);
 
+    rowHdr.appendChild(tools);
     row.appendChild(rowHdr);
 
     /* 밑줄 빈칸 슬롯: 비어 있으면 "_", 글자가 있으면 해당 글자 */
@@ -1949,11 +2076,69 @@ function graphBuildWordListEl(words) {
     });
 
     row.appendChild(blanks);
+
+    /* 단어 입력 모드: 단어 전체 텍스트 입력창 + 저장/취소 */
+    if (isEditing) {
+      const box = document.createElement('div');
+      box.className = 'graph-word-edit';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.id = 'graph-word-edit-input';
+      inp.setAttribute('autocomplete', 'off'); inp.setAttribute('autocapitalize', 'off'); inp.setAttribute('spellcheck', 'false');
+      inp.setAttribute('aria-label', '단어 입력');
+      inp.placeholder = '예: きって / さ＿ら';
+      inp.value = (edit.draft != null) ? edit.draft : graphWordUserText(w);
+      box.appendChild(inp);
+      const save = document.createElement('button');
+      save.type = 'button'; save.className = 'btn'; save.dataset.saveWord = String(w.index); save.textContent = '저장';
+      box.appendChild(save);
+      const cancel = document.createElement('button');
+      cancel.type = 'button'; cancel.className = 'btn'; cancel.dataset.cancelWord = String(w.index); cancel.textContent = '취소';
+      box.appendChild(cancel);
+      const hint = document.createElement('p');
+      hint.className = 'hint';
+      hint.innerHTML = '엔터 = 저장 · Esc = 취소. <code>＿</code>·<code>?</code>·<code>○</code>는 빈 칸. 글자가 칸보다 많으면 칸이 늘어나고, 적으면 뒤 칸은 비워집니다.';
+      box.appendChild(hint);
+      row.appendChild(box);
+    }
     panel.appendChild(row);
   });
 
   container.appendChild(panel);
   return container;
+}
+
+/** 단어 입력 모드 상태: 열린 단어 인덱스 + 입력 중 임시 텍스트 (재렌더 후 복원용). 저장하지 않음. */
+var graphWordEdit = null;   /* {index:number, draft:string|null} | null */
+
+/** 단어 입력 모드를 열거나(index) 닫는다(null). 다른 단어로 바꾸면 이전 임시 입력은 버린다. */
+function graphSetWordEdit(index) {
+  if (index === null || index === undefined) graphWordEdit = null;
+  else graphWordEdit = { index: index, draft: null };
+  graphHideCellEditor();
+  graphRenderWordList();
+  graphApplyEngineVisuals();   /* 새로 그린 슬롯에 추론값·충돌 다시 반영 */
+  if (graphWordEdit) {
+    var inp = document.getElementById('graph-word-edit-input');
+    if (inp) { try { inp.focus(); inp.select(); } catch (_) {} }
+  }
+}
+
+/** 단어 입력 모드 저장: 입력 텍스트를 칸에 반영하고 모드를 닫는다. */
+function graphSaveWordEdit(index) {
+  var inp = document.getElementById('graph-word-edit-input');
+  if (!inp) return;
+  var chars = graphParseWordInput(inp.value);
+  var newWords = graphApplyWordChars(graphState.words, index, chars);
+  if (!newWords) {
+    alert('단어는 1~12글자까지 넣을 수 있습니다.');
+    try { inp.focus(); } catch (_) {}
+    return;
+  }
+  graphState.words = newWords;
+  graphWordEdit = null;
+  graphSaveState();
+  graphRender();   /* 칸 수가 바뀔 수 있으므로 캔버스까지 전체 재렌더 */
 }
 
 /**
@@ -1962,21 +2147,65 @@ function graphBuildWordListEl(words) {
 function graphRenderWordList() {
   const wrap = document.getElementById('graph-word-list');
   if (!wrap) return;
+  /* 열려 있던 단어 입력 모드가 가리키는 단어가 사라졌으면 닫기 */
+  if (graphWordEdit && !graphState.words.some(function(w) { return w.index === graphWordEdit.index; })) graphWordEdit = null;
   wrap.innerHTML = '';
-  wrap.appendChild(graphBuildWordListEl(graphState.words));
+  wrap.appendChild(graphBuildWordListEl(graphState.words, graphWordEdit));
 
-  /* 삭제 버튼 이벤트 핸들러 부착 */
+  /* 삭제 버튼 이벤트 핸들러 부착 — 입력한 글자나 연결된 규칙선이 있으면 한 번 확인 */
   wrap.querySelectorAll('[data-del-word]').forEach(function(btn) {
     var idx = parseInt(btn.dataset.delWord, 10);
     btn.addEventListener('click', function() {
+      var w = graphState.words.find(function(x) { return x.index === idx; });
+      if (!w) return;
+      var userChars = w.letters.filter(function(l) { return l.source === 'user' && l.char; }).length;
+      var ruleCount = graphCountWordRules(graphState.rules, idx);
+      if (userChars > 0 || ruleCount > 0) {
+        var shown = graphWordUserText(w);
+        var what = [];
+        if (userChars > 0) what.push('입력한 글자 ' + userChars + '개');
+        if (ruleCount > 0) what.push('연결된 규칙선 ' + ruleCount + '개');
+        if (!confirm('단어 「' + shown + '」(' + w.charCount + '자)를 삭제할까요?\n' + what.join(' · ') + '가 함께 사라집니다.')) return;
+      }
+      if (graphWordEdit && graphWordEdit.index === idx) graphWordEdit = null;
       var result = graphRemoveWord(graphState.words, graphState.rules, idx);
       graphState.words = result.words;
       graphState.rules = result.rules;
       graphState.positions = graphRemapPositions(graphState.positions, idx);
+      if (graphWordEdit && graphWordEdit.index > idx) graphWordEdit.index -= 1;   /* 뒤 단어 인덱스가 1씩 당겨짐 */
       graphSaveState();
       graphRender();
     });
   });
+
+  /* 단어 입력 모드 열기/닫기 토글 */
+  wrap.querySelectorAll('[data-edit-word]').forEach(function(btn) {
+    var idx = parseInt(btn.dataset.editWord, 10);
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      graphSetWordEdit(graphWordEdit && graphWordEdit.index === idx ? null : idx);
+    });
+  });
+  wrap.querySelectorAll('[data-save-word]').forEach(function(btn) {
+    var idx = parseInt(btn.dataset.saveWord, 10);
+    btn.addEventListener('click', function(e) { e.stopPropagation(); graphSaveWordEdit(idx); });
+  });
+  wrap.querySelectorAll('[data-cancel-word]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) { e.stopPropagation(); graphSetWordEdit(null); });
+  });
+  var editInp = document.getElementById('graph-word-edit-input');
+  if (editInp) {
+    var editIdx = graphWordEdit.index;
+    editInp.addEventListener('input', function() { if (graphWordEdit) graphWordEdit.draft = editInp.value; });
+    editInp.addEventListener('keydown', function(e) {
+      /* IME 변환 확정용 엔터(isComposing / keyCode 229)는 저장으로 취급하지 않음 */
+      if (e.isComposing || e.keyCode === 229) return;
+      if (e.key === 'Enter') { e.preventDefault(); graphSaveWordEdit(editIdx); }
+      else if (e.key === 'Escape') { e.preventDefault(); graphSetWordEdit(null); }
+    });
+    /* 셀 편집기의 바깥 클릭 핸들러가 이 입력창을 셀 클릭으로 오해하지 않도록 */
+    editInp.addEventListener('pointerdown', function(e) { e.stopPropagation(); });
+  }
 
   /* 글자 슬롯 클릭 → 편집기 표시 (Sub-AC 5) */
   wrap.querySelectorAll('[data-cell-id]').forEach(function(slot) {
@@ -2440,10 +2669,12 @@ function graphInitCellEditor() {
   var composing = false;
 
   editor.addEventListener('compositionstart', function() { composing = true; });
+  /* 포커스가 새로 들어오면 조합 플래그 초기화 — compositionend 를 내지 않는 IME 에서 플래그가 끼는 것 방지 */
+  editor.addEventListener('focus', function() { composing = false; });
 
   editor.addEventListener('compositionend', function() {
     composing = false;
-    var ch = toAsciiLetters(kataToHira(editor.value.trim())).slice(0, 1);
+    var ch = toAsciiLetters(kataToHira(editor.value.trim())).slice(-1);
     if (graphSelectedCellId) {
       graphCommitCellChar(graphSelectedCellId, ch);
       editor.value = ch;
@@ -2451,15 +2682,15 @@ function graphInitCellEditor() {
     }
   });
 
-  editor.addEventListener('input', function() {
-    /* composing 게이트 제거: IME 합성 플래그가 끼어 입력이 커밋되지 않던 버그 수정.
-       마지막 글자만 유지하고 매 입력마다 커밋한다 (compositionend에서도 한 번 더 커밋). */
+  editor.addEventListener('input', function(e) {
+    /* 매 입력마다 마지막 글자를 커밋한다(조합 플래그가 끼어도 입력이 반영되도록).
+       단, IME 조합 중(촉음 'tt'→っ, 요음 'lya'→ゃ 처럼 여러 키로 한 글자를 만드는 중)에는
+       입력창 값을 건드리지 않는다 — 값을 덮어쓰면 조합이 끊겨 't'·'あ' 같은 조각만 남는다.
+       조합이 끝나면 compositionend 에서 최종 글자로 정리한다. */
     var val = toAsciiLetters(kataToHira(editor.value));
     if (val.length > 1) val = val.slice(-1);
-    if (graphSelectedCellId) {
-      graphCommitCellChar(graphSelectedCellId, val);
-      editor.value = val;
-    }
+    if (graphSelectedCellId) graphCommitCellChar(graphSelectedCellId, val);
+    if (!(composing || (e && e.isComposing))) editor.value = val;
   });
 
   editor.addEventListener('keydown', function(e) {
@@ -2566,6 +2797,7 @@ function graphInitForm() {
     clearBtn.addEventListener('click', function() {
       if (!graphState.words.length) return;
       if (!confirm('모든 단어와 규칙을 삭제하시겠습니까?')) return;
+      graphWordEdit = null;
       graphState = { words: [], rules: [], positions: {}, looseSmallLarge: graphState.looseSmallLarge, seqWrap: graphState.seqWrap, showEdges: graphState.showEdges };
       graphSaveState();
       graphRender();
@@ -3733,15 +3965,25 @@ function shiriSCC(n, adj){
 /* 가장 긴 시리토리(각 단어 1회) = 방향 그래프의 최장 단순 경로.
    단어가 많아 폭주하면 step 상한에서 멈추고 truncated=true(근삿값) 표시. */
 function shiriLongestChain(model){
+  const r = shiriLongestChains(model);
+  return { chain: r.chains[0] || [], truncated: r.truncated };
+}
+
+/* 가장 긴 체인을 모두 모은다 (같은 길이의 경우의 수).
+   - 순환으로 시작점만 다른 체인(A→B→C 와 B→C→A, 마지막→첫 단어가 이어지는 경우)은 하나로 묶는다.
+   - 경우가 너무 많으면 ALT_CAP 개까지만 모으고 more=true. */
+function shiriLongestChains(model){
   const { n, adj } = model;
-  let best = [];
-  let steps = 0, truncated = false;
-  const CAP = 1500000;
+  let bestLen = 0;
+  let chains = [];
+  let steps = 0, truncated = false, more = false;
+  const CAP = 1500000, ALT_CAP = 300;
   const visited = new Array(n).fill(false);
   const path = [];
   function dfs(u){
     visited[u] = true; path.push(u);
-    if (path.length > best.length) best = path.slice();
+    if (path.length > bestLen){ bestLen = path.length; chains = [path.slice()]; more = false; }
+    else if (path.length === bestLen){ if (chains.length < ALT_CAP) chains.push(path.slice()); else more = true; }
     const succ = adj[u];
     for (let k = 0; k < succ.length; k++){
       if (++steps > CAP){ truncated = true; break; }
@@ -3752,8 +3994,29 @@ function shiriLongestChain(model){
     path.pop(); visited[u] = false;
   }
   for (let s = 0; s < n && !truncated; s++) dfs(s);
-  return { chain: best, truncated };
+
+  /* 순환 중복 제거: 끝 단어→첫 단어가 이어지면 회전 동치 — 가장 작은 인덱스가 앞에 오게 돌린 키로 묶는다 */
+  const seen = new Set();
+  const out = [];
+  chains.forEach(c => {
+    let key;
+    if (c.length >= 2 && adj[c[c.length - 1]].indexOf(c[0]) >= 0){
+      let mi = 0;
+      for (let k = 1; k < c.length; k++) if (c[k] < c[mi]) mi = k;
+      key = 'cyc:' + c.slice(mi).concat(c.slice(0, mi)).join(',');
+    } else {
+      key = 'lin:' + c.join(',');
+    }
+    if (seen.has(key)) return;
+    seen.add(key); out.push(c);
+  });
+  return { chains: out, truncated, more };
 }
+
+/* 최장 체인 경우의 수 중 현재 보고 있는 번호 — 단어/옵션이 바뀌면 0으로 되돌린다(저장 안 함) */
+let shiriAltIdx = 0;
+let shiriAltKey = '';
+let shiriLastAltCount = 0;
 
 /* ----- 레이아웃 / 렌더 ----- */
 let shiriMeasureCtx = null;
@@ -3792,13 +4055,30 @@ function shiriRender(){
   const opts = shiriState;
   const words = shiriState.words;
   const model = shiriBuildModel(words, opts);
-  const { chain, truncated } = shiriLongestChain(model);
+  const alts = shiriLongestChains(model);
   const n = model.n;
+
+  /* 단어·옵션이 바뀌면 보던 경우 번호를 처음으로 */
+  const altKey = JSON.stringify([words, opts.kataAsHira, opts.smallAsLarge, opts.ignoreDiacritic, opts.longVowel, opts.markDeadEnd]);
+  if (altKey !== shiriAltKey){ shiriAltKey = altKey; shiriAltIdx = 0; }
+  if (shiriAltIdx >= alts.chains.length) shiriAltIdx = 0;
+  shiriLastAltCount = alts.chains.length;
+  const chain = alts.chains[shiriAltIdx] || [];
+  const truncated = alts.truncated;
 
   /* ---- 결과(체인) + 통계 ---- */
   const statsEl = document.getElementById('shiri-stats');
   const chainEl = document.getElementById('shiri-chain');
   const showChain = chain.length >= 2;
+
+  /* 경우의 수 내비게이션 (2가지 이상일 때만) */
+  const navEl = document.getElementById('shiri-alt-nav');
+  if (navEl){
+    const altCount = showChain ? alts.chains.length : 0;
+    navEl.classList.toggle('hidden', altCount < 2);
+    const lab = document.getElementById('shiri-alt-label');
+    if (lab) lab.innerHTML = '<b>' + (shiriAltIdx + 1) + '</b> / ' + altCount + (alts.more ? '+' : '');
+  }
   const deadCount = opts.markDeadEnd ? model.dead.filter(Boolean).length : 0;
   /* 고립 = 아무 곳과도 안 이어짐. 단, 막다른(ん) 단어는 위 막다른 수에서 세므로 중복 집계하지 않는다(목록 배지와 일치) */
   const isoCount = words.filter((_, i) => !model.connected[i] && !(opts.markDeadEnd && model.dead[i])).length;
@@ -3807,6 +4087,7 @@ function shiriRender(){
     if (!n) statsEl.textContent = '';
     else {
       let s = n + '개 단어 · 최장 ' + chain.length + '개 이음';
+      if (showChain && alts.chains.length > 1) s += ' · ' + alts.chains.length + (alts.more ? '+' : '') + '가지';
       if (truncated) s += ' (근삿값)';
       if (cycCount) s += ' · 순환 ' + cycCount;
       if (opts.markDeadEnd && deadCount) s += ' · 막다른 ' + deadCount;
@@ -4171,6 +4452,18 @@ function shiriInit(){
   if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); shiriAddFromInput(); } });
   if (arrangeBtn) arrangeBtn.addEventListener('click', shiriAutoArrange);
   if (clearBtn) clearBtn.addEventListener('click', shiriClearAll);
+
+  /* 최장 체인 경우의 수 좌우 넘김 */
+  const altStep = (d) => {
+    const cnt = shiriLastAltCount;   /* 마지막 렌더에서 계산한 경우의 수 (재탐색 없이) */
+    if (cnt < 2) return;
+    shiriAltIdx = ((shiriAltIdx + d) % cnt + cnt) % cnt;
+    shiriRender();
+  };
+  const altPrev = document.getElementById('shiri-alt-prev');
+  const altNext = document.getElementById('shiri-alt-next');
+  if (altPrev) altPrev.addEventListener('click', () => altStep(-1));
+  if (altNext) altNext.addEventListener('click', () => altStep(1));
 
   const bindOpt = (el, prop) => { if (el) el.addEventListener('change', () => { shiriState[prop] = el.checked; shiriSaveState(); shiriRender(); }); };
   bindOpt(optKata, 'kataAsHira');
