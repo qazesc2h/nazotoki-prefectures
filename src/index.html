@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+<title>나조토키 도우미</title>
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <h1>나조토키 도우미</h1>
+    <div class="spacer"></div>
+    <div class="mode-switch" id="modeSwitch">
+      <button class="mode-toggle" id="modeToggle" type="button" aria-haspopup="true" aria-expanded="false" aria-label="도구 선택">
+        <span id="modeToggleLabel">도도부현</span>
+        <span class="mode-toggle-icon" aria-hidden="true">☰</span>
+      </button>
+      <div class="seg" id="modeSeg" role="tablist" aria-label="모드">
+        <button data-mode="pref" class="on">도도부현</button>
+        <button data-mode="cap">현청소재지</button>
+        <button data-view="graph">규칙 그래프</button>
+        <button data-view="babanuki">바바누키</button>
+        <button data-view="shiritori">시리토리</button>
+      </div>
+    </div>
+    <div class="strike-status hidden" id="strikeStatus">
+      <span id="strikeCount"></span>
+      <button class="btn" id="resetStrike">되돌리기</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="search" class="on">🔎 검색</button>
+    <button data-tab="all">📋 전체 보기</button>
+    <button data-tab="map">🗾 전체 지도</button>
+    <button data-tab="shapes">🟩 모양 → 이름</button>
+  </nav>
+
+  <!-- SEARCH TAB -->
+  <section id="tab-search">
+    <div class="panel controls">
+      <div class="field grow">
+        <label for="q">검색어 <span id="qScope" style="color:var(--accent)">(かな·한자·로마자)</span></label>
+        <input type="text" id="q" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="예: まつ / 山* / *やま / ??? / matsu" />
+        <p class="hint"><code>*</code> = 임의 글자(0개+), <code>?</code> = 정확히 1글자. 와일드카드 없으면 부분일치. 예: <code>??</code> 두 글자, <code>*わ</code> ~わ로 끝, <code>か*き</code> か로 시작 き로 끝.</p>
+      </div>
+      <div class="field">
+        <label for="field">검색 대상</label>
+        <select id="field">
+          <option value="all">전체</option>
+          <option value="kana">읽기(かな)</option>
+          <option value="kanji">한자</option>
+          <option value="romaji">로마자</option>
+          <option value="pair" id="fieldPairOpt" title="현청소재지 모드에서는 소속 도도부현 이름으로, 도도부현 모드에서는 현청소재지 이름으로 찾습니다">짝 이름(현청소재지)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="lenFilter">글자수(かな)</label>
+        <select id="lenFilter"><option value="">전체</option></select>
+      </div>
+      <div class="field">
+        <label for="sortSearch">정렬</label>
+        <select id="sortSearch">
+          <option value="gojuon">사전순(50음)</option>
+          <option value="len">글자수순</option>
+          <option value="jis">JIS순(후생노동성)</option>
+        </select>
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <label class="checkbox"><input type="checkbox" id="kanaToggle" /> 요미가나 크게</label>
+        <label class="checkbox"><input type="checkbox" id="detailToggle" /> 자세히 보기</label>
+      </div>
+    </div>
+    <p class="count" id="searchCount"></p>
+    <div class="grid" id="searchResults"></div>
+  </section>
+
+  <!-- ALL TAB -->
+  <section id="tab-all" class="hidden">
+    <div class="panel controls">
+      <div class="field">
+        <label for="allView">보기 방식</label>
+        <select id="allView">
+          <option value="len">글자수 그룹</option>
+          <option value="gojuon">사전순(50음)</option>
+          <option value="jis">JIS순(후생노동성)</option>
+          <option value="region">지역별</option>
+        </select>
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <label class="checkbox"><input type="checkbox" id="kanaToggleAll" /> 요미가나 크게</label>
+        <label class="checkbox"><input type="checkbox" id="detailToggleAll" /> 자세히 보기</label>
+      </div>
+    </div>
+    <div id="allResults"></div>
+  </section>
+
+  <!-- MAP TAB -->
+  <section id="tab-map" class="hidden">
+    <div class="panel map-controls">
+      <label class="checkbox"><input type="checkbox" id="mapLabels" checked /> 이름 표시</label>
+      <label class="checkbox"><input type="checkbox" id="mapRegionColor" /> 지역별 색</label>
+      <span class="hint" id="mapHint">땅을 클릭하면 회색으로 <b>가려집니다</b>(다른 탭과 동일 · 모든 탭에 반영). 호버하면 상세정보가 나옵니다.</span>
+    </div>
+    <div class="panel map-stage" id="mapStage"></div>
+  </section>
+
+  <!-- SHAPES TAB -->
+  <section id="tab-shapes" class="hidden">
+    <div class="panel map-controls">
+      <div class="field" style="margin:0">
+        <select id="galSort">
+          <option value="len">글자수 그룹</option>
+          <option value="gojuon">사전순(50음)</option>
+          <option value="jis">JIS순(후생노동성)</option>
+          <option value="region">지역별</option>
+        </select>
+      </div>
+      <label class="checkbox"><input type="checkbox" id="kanaToggleGal" /> 요미가나 크게</label>
+      <span class="hint">초록 모양과 이름을 함께 봅니다. 모양을 클릭하면 회색으로 가려집니다(모든 탭에 반영).</span>
+    </div>
+    <div id="galWrap"></div>
+  </section>
+
+  <!-- RULE GRAPH TAB -->
+  <section id="tab-graph" class="hidden">
+    <div class="panel controls">
+      <div class="field">
+        <label for="graphWordText">단어 입력</label>
+        <input type="text" id="graphWordText" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="예: さくら / apple" style="width:150px" />
+      </div>
+      <button class="btn" id="graphAddWordText">+ 단어 추가</button>
+      <div class="field">
+        <label for="graphCharCount">또는 글자 수 (1~12)</label>
+        <input type="text" inputmode="numeric" id="graphCharCount" value="5" maxlength="2" style="width:80px" />
+      </div>
+      <button class="btn" id="graphAddWord">+ 빈 칸</button>
+      <button class="btn" id="graphConnectToggle" aria-pressed="false">🔗 규칙 연결: 끔</button>
+      <button class="btn" id="graphLooseToggle" aria-pressed="false" title="같은 글자 규칙에서 작은 글자(ぁゃっ)와 큰 글자(あやつ)를 같은 글자로 취급">작은⇄큰 같은 글자: 끔</button>
+      <button class="btn" id="graphWrapToggle" aria-pressed="false" title="'다음 글자' 규칙이 순서의 끝을 넘으면 처음으로 순환 (ん→あ, 이로하 す→い, 알파벳 z→a)">순환 ん→あ: 끔</button>
+      <button class="btn on" id="graphEdgesToggle" aria-pressed="true" title="규칙선을 잠시 숨겨 단어 읽기·새 규칙 연결을 편하게 합니다 (규칙·추론은 그대로 유지)">규칙선 표시: 켬</button>
+      <span class="hint" id="graphConnectHint" style="display:none">셀에서 다른 셀로 드래그해 규칙을 만드세요</span>
+      <div class="spacer"></div>
+      <button class="btn" id="graphClearAll">전체 삭제</button>
+    </div>
+    <details class="panel" id="graph-legend-wrap" style="margin-bottom:12px" open>
+      <summary style="cursor:pointer; font-size:12px; color:var(--muted); padding:9px 12px; user-select:none">규칙선 색상 안내</summary>
+      <div id="graph-legend" style="padding:2px 12px 12px; display:flex; flex-wrap:wrap; row-gap:6px"></div>
+    </details>
+    <div id="graph-main-layout">
+      <div id="graph-canvas-area">
+        <div class="panel" id="graph-canvas-wrap" style="min-height:280px; position:relative; overflow:auto">
+          <p class="empty" id="graph-empty">단어를 추가하면 여기에 규칙 그래프가 나타납니다.</p>
+        </div>
+      </div>
+      <div id="graph-word-list"></div>
+    </div>
+  </section>
+
+  <!-- BABANUKI TAB (ババ抜き) -->
+  <section id="tab-babanuki" class="hidden">
+    <div class="panel controls">
+      <div class="field grow">
+        <label for="baba-input">단어 입력</label>
+        <input type="text" id="baba-input" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="예: たぬき (엔터 또는 「추가」). 여러 단어는 띄어쓰기·쉼표로 한 번에" />
+        <p class="hint">엔터 또는 <code>＋추가</code>로 단어를 더합니다. 모든 단어의 글자를 모아 <b>겹치는 글자를 지우고</b> 남는 글자를 읽습니다.</p>
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <button class="btn" id="baba-add" type="button">＋ 추가</button>
+      </div>
+      <div class="field">
+        <label for="baba-rule">겹침 규칙</label>
+        <select id="baba-rule">
+          <option value="pair">짝만 지우기 (홀수는 1개 남김)</option>
+          <option value="all">겹치면 모두 지우기</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>글자 맞추기</label>
+        <label class="checkbox"><input type="checkbox" id="baba-opt-kata" /> カ=か (가나 통일)</label>
+        <label class="checkbox"><input type="checkbox" id="baba-opt-small" /> 작은⇄큰 같은 글자</label>
+        <label class="checkbox"><input type="checkbox" id="baba-opt-dia" /> 탁점·반탁점 무시</label>
+        <label class="checkbox"><input type="checkbox" id="baba-opt-case" /> Aa (영문 대소문자 무시)</label>
+      </div>
+    </div>
+
+    <div class="panel baba-result">
+      <div class="baba-result-head">
+        <span class="baba-result-title">남은 글자</span>
+        <span class="baba-surv-count" id="baba-surv-count"></span>
+      </div>
+      <div class="baba-answer" id="baba-answer"></div>
+    </div>
+
+    <div class="baba-list-head">
+      <span class="count" id="baba-word-count"></span>
+      <div class="spacer"></div>
+      <button class="btn" id="baba-clear" type="button">목록 비우기</button>
+    </div>
+    <div class="panel" id="baba-list"></div>
+  </section>
+
+  <!-- SHIRITORI TAB (しりとり / 끝말잇기) -->
+  <section id="tab-shiritori" class="hidden">
+    <div class="panel controls">
+      <div class="field grow">
+        <label for="shiri-input">단어 입력</label>
+        <input type="text" id="shiri-input" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="예: りんご ごりら らっぱ / apple elephant tiger" />
+        <p class="hint">엔터 또는 <code>＋추가</code>. 띄어쓰기·쉼표·줄바꿈으로 여러 단어를 한 번에. <b>앞 단어의 끝글자 = 뒤 단어의 첫글자</b>로 이어집니다. 가타카나·<b>영어</b> 모두 가능(영어는 대소문자 무시).</p>
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <button class="btn" id="shiri-add" type="button">＋ 추가</button>
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <button class="btn" id="shiri-arrange" type="button" title="드래그로 옮긴 노드 위치를 초기화하고 자동 배치로 되돌립니다">자동 정렬</button>
+      </div>
+    </div>
+
+    <div class="panel controls shiri-opts">
+      <span class="field" style="gap:0"><label style="margin:0">잇기 규칙</label></span>
+      <label class="checkbox"><input type="checkbox" id="shiri-opt-kata" /> カ=か (가나 통일)</label>
+      <label class="checkbox"><input type="checkbox" id="shiri-opt-small" /> 작은⇄큰 같은 글자</label>
+      <label class="checkbox"><input type="checkbox" id="shiri-opt-dia" /> 탁점·반탁점 느슨하게 (が↔か)</label>
+      <label class="checkbox"><input type="checkbox" id="shiri-opt-long" title="コーヒー처럼 ー로 끝나면 앞 글자(ひ)로 잇습니다"> 장음(ー) 잇기</label>
+      <label class="checkbox"><input type="checkbox" id="shiri-opt-dead" /> ん으로 끝나면 막다른 길</label>
+    </div>
+
+    <div class="panel shiri-result">
+      <div class="baba-result-head">
+        <span class="baba-result-title">가장 긴 시리토리</span>
+        <span class="baba-surv-count" id="shiri-stats"></span>
+        <span class="shiri-alt-nav hidden" id="shiri-alt-nav" title="같은 길이의 다른 시리토리 순서를 좌우로 넘겨 봅니다 (순환으로 시작점만 다른 것은 하나로 묶음)">
+          <button class="btn" id="shiri-alt-prev" type="button" aria-label="이전 경우">◀</button>
+          <span id="shiri-alt-label"><b>1</b> / 1</span>
+          <button class="btn" id="shiri-alt-next" type="button" aria-label="다음 경우">▶</button>
+        </span>
+      </div>
+      <div class="shiri-chain" id="shiri-chain"></div>
+    </div>
+
+    <div class="shiri-legend" id="shiri-legend">
+      <span><span class="ln chain"></span>최장 체인</span>
+      <span><span class="ln"></span>그 외 이어짐</span>
+      <span><span class="ln cyc"></span>순환(되돌아옴)</span>
+      <span><span class="ln dead"></span>막다른 길(ん)</span>
+      <span class="spacer" style="flex:1 1 auto"></span>
+      <span style="color:var(--muted)">💡 노드를 드래그해 자유롭게 배치할 수 있어요</span>
+    </div>
+    <div class="panel" id="shiri-canvas-wrap">
+      <p class="empty" id="shiri-empty">단어를 추가하면 시리토리 그래프가 나타납니다.</p>
+    </div>
+
+    <div class="baba-list-head" style="margin-top:14px">
+      <span class="count" id="shiri-word-count"></span>
+      <div class="spacer"></div>
+      <button class="btn" id="shiri-clear" type="button">목록 비우기</button>
+    </div>
+    <div class="panel" id="shiri-list"></div>
+  </section>
+
+  <footer class="app">
+    <p><strong>데이터</strong> 47 도도부현·현청소재지(漢字·かな·로마자·지역·JIS X 0401 순서) — 웹 교차검증 완료. 도쿄도청 소재지는 신주쿠구(新宿区).</p>
+    <p><strong>지도</strong> SVG: <a href="https://github.com/geolonia/japanese-prefectures" target="_blank" rel="noopener">geolonia/japanese-prefectures</a> (Wikipedia 日本地図.svg 기반, 라이선스 GFDL). 글자수는 かな(히라가나) 글자 수 기준입니다.</p>
+  </footer>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<!-- Sub-AC 5: 셀 편집기 플로팅 입력 (캔버스 셀 + 목록 슬롯 공용) -->
+<input type="text" id="graph-cell-editor" maxlength="8"
+  autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" />
+<!-- 규칙 종류 선택 메뉴 (셀→셀 연결 후) -->
+<div id="graph-rule-menu"></div>
+<!-- 셀 컨텍스트 메뉴 (작은 글자만 칸 토글) -->
+<div id="graph-cell-menu"></div>
+<!-- 규칙선 삭제 팝업 -->
+<div id="graph-edge-pop"><span id="graph-edge-label"></span><button class="btn" id="graph-edge-del" type="button">🗑 삭제</button></div>
+
+<!-- hidden source SVG map (cloned at runtime for map + silhouettes) -->
+
+<!-- 지도 SVG는 main.ts 가 assets/japan-map.svg 를 inline 으로 주입 (빌드 시 번들에 포함) -->
+<div id="jpmap-src" style="position:absolute;width:0;height:0;overflow:hidden;left:-9999px" aria-hidden="true"></div>
+
+<script type="module" src="./main.ts"></script>
+</body>
+</html>
