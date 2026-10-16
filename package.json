@@ -1,0 +1,31 @@
+{
+  "name": "nazotoki-prefectures",
+  "private": true,
+  "version": "1.0.0",
+  "description": "나조토키 도우미 — 도도부현/현청소재지 검색 · 규칙 그래프 · 바바누키 · 시리토리 (단일 HTML로 빌드)",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.1.0",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^3.2.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

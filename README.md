@@ -1,7 +1,8 @@
 # 나조토키 도우미 (謎解き 도우미)
 
-일본어 謎解き(나조토키) 문제를 풀 때 막히지 않도록 도와주는 단일 파일 도구 모음입니다.
-인터넷 없이도 동작하는 정적 HTML 한 장(`index.html`)이며, 상단 토글로 **다섯 가지 도구**를 오갑니다.
+일본어 謎解き(나조토키) 문제를 풀 때 막히지 않도록 도와주는 도구 모음입니다.
+인터넷 없이도 동작하는 정적 HTML 한 장(`index.html`)으로 빌드되며, 상단 토글로 **다섯 가지 도구**를 오갑니다.
+소스는 `src/` 아래 기능별 TypeScript 모듈이고, `pnpm build` 가 그것을 루트 `index.html` 한 파일로 묶습니다(아래 「개발」 참고).
 
 | 도구 | 하는 일 |
 | --- | --- |
@@ -15,15 +16,56 @@
 
 ## 실행
 
-브라우저로 `index.html`을 그냥 열면 됩니다(더블클릭 또는 `file://`).
+브라우저로 루트의 `index.html`을 그냥 열면 됩니다(더블클릭 또는 `file://`). 빌드 산출물이 저장소에 같이 들어 있으므로 Node 없이도 바로 쓸 수 있습니다.
 로컬 서버로 띄우려면:
 
 ```bash
-python3 -m http.server 8791
-# → http://localhost:8791
+python3 -m http.server 8917
+# → http://localhost:8917
 ```
 
 선택한 도구·옵션·입력 내용은 **새로고침 후에도 유지**됩니다(localStorage).
+
+## 개발
+
+패키지 매니저는 **pnpm** 을 씁니다(`package.json` 의 `packageManager` 에 버전 고정). Node 20 이상에서 `corepack enable` 한 번이면 맞는 pnpm 이 자동으로 쓰입니다.
+
+```bash
+corepack enable    # 최초 1회 (pnpm 이 없을 때)
+pnpm install
+pnpm dev           # Vite 개발 서버 (src/ 를 바로 띄움, 수정 즉시 반영) → http://localhost:8917
+pnpm check         # 타입체크 + 단위 테스트 + 빌드 (커밋 전에 한 번)
+pnpm build         # src/ → 루트 index.html 한 파일로 번들 (CSS·JS·지도 SVG 인라인)
+pnpm test          # vitest — 순수 함수 단위 테스트
+```
+
+> **루트 `index.html` 은 생성 파일입니다.** 직접 고치지 말고 `src/` 를 고친 뒤 `pnpm build` 로 다시 만들어 함께 커밋하세요.
+
+### 구조
+
+```
+src/
+  index.html            마크업 (지도 SVG 는 빌드 시 assets/ 에서 주입)
+  styles.css            전체 스타일
+  main.ts               앱 셸 — 상단 도구 토글·콘텐츠 탭 전환, 각 도구 초기화
+  shared/kana.ts        가나 정규화·작은 글자·탁점 표, 단어 분리 (모든 도구 공용)
+  shared/dom.ts         DOM/SVG/localStorage 헬퍼
+  prefectures/data.ts   47 도도부현 데이터·모드별 필드·정렬·와일드카드 매처
+  prefectures/ui.ts     검색 / 전체 보기 / 전체 지도 / 모양→이름 + 가리기 상태
+  graph/model.ts        단어·칸·규칙 데이터 모델 (추가·삭제·단어 입력 모드) — 순수
+  graph/engine.ts       규칙 엔진 (오십음도/이로하/알파벳 순서, 음운, 칸 타입, 제약 전파·검증) — 순수
+  graph/layout.ts       캔버스 박스 치수·자동 배치 — 순수
+  graph/state.ts        규칙 그래프 상태 + 저장/복원
+  graph/ui.ts           단어 목록·캔버스·셀 편집기·규칙 연결·메뉴·범례
+  babanuki/model.ts     글자 비교 키·겹침 계산 — 순수 (시리토리도 재사용)
+  babanuki/ui.ts        바바누키 탭
+  shiritori/model.ts    끝/첫글자 규칙·방향 그래프·SCC·최장 체인 열거 — 순수
+  shiritori/ui.ts       시리토리 탭 (그래프 드래그·경우의 수 넘김)
+tests/                  vitest 단위 테스트 (순수 모듈 대상)
+assets/japan-map.svg    지도 원본 (GFDL) — 빌드 시 인라인
+```
+
+`*/model.ts`·`engine.ts`·`layout.ts` 는 DOM 을 쓰지 않는 순수 함수라 Node 에서 바로 테스트됩니다. 새 기능은 가능하면 이 층에 로직을 두고 `ui.ts` 는 그리기·이벤트만 담당하게 하세요.
 
 ---
 
