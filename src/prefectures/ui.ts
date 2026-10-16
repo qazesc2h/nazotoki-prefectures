@@ -66,14 +66,14 @@ function makeCard(d: Pref): HTMLDivElement {
   // optionally swap which line is prominent: kanji (default) vs yomigana
   const big = state.kanaFirst ? f.kana : f.main;
   const small = state.kanaFirst ? f.main : f.kana;
-  /* 현청소재지 모드: 간단 보기에서는 소속 도도부현을 한자 옆 칩으로 (자세히 보기에서는 아래 배지 줄에 표시) */
+  /* 현청소재지 모드: 간단 보기에서는 소속 도도부현을 작은 글자 줄 옆 칩으로 (자세히 보기에서는 아래 배지 줄에 표시) */
   const pairChip = (state.mode === 'cap' && !state.detail)
     ? '<span class="badge pair' + (d.capNeq ? ' neq' : '') + '" title="' + d.kanji + '의 현청소재지">' + d.kanji + '</span>'
     : '';
   let html =
     '<span class="code">' + d.code + '</span>' +
-    '<div class="main"><span>' + big + '</span>' + pairChip + '</div>' +
-    '<div class="kana">' + small + '</div>';
+    '<div class="main">' + big + '</div>' +
+    '<div class="kana"><span>' + small + '</span>' + pairChip + '</div>';
 
   if (state.detail) {
     let subHtml = '<span class="badge region">' + d.region + '</span>'

@@ -116,9 +116,9 @@ body.detail-view .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 
 .card:hover { border-color: var(--accent); }
 .card:active { transform: translateY(1px); }
 .card .code { position: absolute; top: 8px; right: 10px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.card .main { font-size: 19px; font-weight: 700; letter-spacing: .01em; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 7px; padding-right: 18px; }
-.card .kana { font-size: 13px; color: var(--muted); margin-top: 1px; }
-/* 현청소재지 모드: 어느 도도부현의 현청인지 — 한자 옆 칩 (간단 보기에서도 항상, 자세히 보기의 배지와 같은 모양) */
+.card .main { font-size: 19px; font-weight: 700; letter-spacing: .01em; padding-right: 18px; }
+.card .kana { font-size: 13px; color: var(--muted); margin-top: 1px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
+/* 현청소재지 모드: 어느 도도부현의 현청인지 — 작은 글자 줄(요미가나, 「요미가나 크게」면 한자) 옆 칩. 자세히 보기의 배지와 같은 모양 */
 .badge.pair { font-size: 11px; font-weight: 600; letter-spacing: 0; line-height: 1.5; white-space: nowrap; }
 .badge.pair.neq { color: var(--text); border-color: var(--accent); }
 .is-struck .badge.pair { color: var(--struck-text) !important; border-color: var(--struck) !important; }
