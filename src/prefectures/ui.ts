@@ -66,15 +66,14 @@ function makeCard(d: Pref): HTMLDivElement {
   // optionally swap which line is prominent: kanji (default) vs yomigana
   const big = state.kanaFirst ? f.kana : f.main;
   const small = state.kanaFirst ? f.main : f.kana;
+  /* 현청소재지 모드: 간단 보기에서는 소속 도도부현을 한자 옆 칩으로 (자세히 보기에서는 아래 배지 줄에 표시) */
+  const pairChip = (state.mode === 'cap' && !state.detail)
+    ? '<span class="badge pair' + (d.capNeq ? ' neq' : '') + '" title="' + d.kanji + '의 현청소재지">' + d.kanji + '</span>'
+    : '';
   let html =
     '<span class="code">' + d.code + '</span>' +
-    '<div class="main">' + big + '</div>' +
+    '<div class="main"><span>' + big + '</span>' + pairChip + '</div>' +
     '<div class="kana">' + small + '</div>';
-
-  /* 현청소재지 모드: 간단 보기에서도 소속 도도부현을 한 줄로 (자세히 보기에서는 아래 배지로 표시) */
-  if (state.mode === 'cap' && !state.detail) {
-    html += '<div class="pair' + (d.capNeq ? ' neq' : '') + '" title="' + d.kanji + '의 현청소재지">' + d.kanji + '</div>';
-  }
 
   if (state.detail) {
     let subHtml = '<span class="badge region">' + d.region + '</span>'
@@ -337,7 +336,7 @@ function renderGallery(): void {
       tile.appendChild(buildSilhouetteSvg(d.code));
       const nm = document.createElement('div'); nm.className = 'tile-name';
       nm.innerHTML = '<span class="k">' + (state.kanaFirst ? f.kana : f.main) + '</span><span class="r">' + (state.kanaFirst ? f.main : f.kana) + '</span>'
-        + (state.mode === 'cap' ? '<span class="p">⌂ ' + d.kanji + '</span>' : '');   /* 현청소재지 모드: 소속 도도부현 */
+        + (state.mode === 'cap' ? '<span class="badge pair' + (d.capNeq ? ' neq' : '') + '">' + d.kanji + '</span>' : '');   /* 현청소재지 모드: 소속 도도부현 칩 */
       tile.appendChild(nm);
       tile.addEventListener('click', () => toggleStruck(d.code));
       gal.appendChild(tile);
