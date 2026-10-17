@@ -4,6 +4,10 @@ import { toAsciiLetters, isSmallKana, baseChar, smallForm, isDakuten, isHandakut
 import type { Word, Rule, RuleType, SeqOrder } from './model';
 
 export type CellType = '' | 'small' | 'dakuten' | 'handakuten';
+/** 탁음 '다음 글자' 처리: row = 각 행 안에서만(기본) / dakuten = が→ざ→だ→ば 행을 이어서 / dakuten_handakuten = …→ば→ぱ 까지 */
+export type VoicedChain = 'row' | 'dakuten' | 'dakuten_handakuten';
+export const VOICED_CHAIN_ORDER: VoicedChain[] = ['row', 'dakuten', 'dakuten_handakuten'];
+export const VOICED_CHAIN_LABEL: Record<VoicedChain, string> = { row: '행 안에서만', dakuten: 'が→ざ→だ→ば 이어서', dakuten_handakuten: 'が→ざ→だ→ば→ぱ 이어서' };
 
 /* 오십음도 선형 시퀀스 (기본 청음 46자) */
 export var GRAPH_GOJUON = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
@@ -24,10 +28,17 @@ export function seqIdxStep(i: number, step: number, len: number, wrap: boolean):
 /** 시퀀스(order)에서 ch 로부터 step 칸 떨어진 글자. 시퀀스에 없거나 (순환 끔일 때) 범위를 벗어나면 null.
  *  gojuon: 청음은 선형(행을 넘어감), 탁음·반탁음은 같은 자음 행 안에서만 이동.
  *  alphabet: 대소문자 구분 없이 찾고, 결과는 기준 글자의 대소문자를 따른다. */
-export function seqStepChar(ch: string, order: SeqOrder, step: number, wrap: boolean): string | null {
+export function seqStepChar(ch: string, order: SeqOrder, step: number, wrap: boolean, voiced: VoicedChain = 'row'): string | null {
   if (order === 'gojuon'){
     var i = GRAPH_GOJUON.indexOf(ch);
     if (i >= 0){ var j = seqIdxStep(i, step, GRAPH_GOJUON.length, wrap); return j < 0 ? null : GRAPH_GOJUON[j]; }
+    /* 탁음표를 작은 오십음도로 보는 출제: が행→ざ행→だ행→ば행(→ぱ행)을 하나의 순서로 잇는다. 청음표와는 섞지 않는다. */
+    if (voiced !== 'row'){
+      var chainRows = voiced === 'dakuten_handakuten' ? GRAPH_GOJUON_VOICED.slice(0, 5) : GRAPH_GOJUON_VOICED.slice(0, 4);
+      var seq = chainRows.join('');
+      var vi = seq.indexOf(ch);
+      if (vi >= 0){ var vj = seqIdxStep(vi, step, seq.length, wrap); return vj < 0 ? null : seq[vj]; }
+    }
     for (var r = 0; r < GRAPH_GOJUON_VOICED.length; r++){
       var row = GRAPH_GOJUON_VOICED[r], k = row.indexOf(ch);
       if (k >= 0){ var m = seqIdxStep(k, step, row.length, wrap); return m < 0 ? null : row[m]; }
@@ -140,7 +151,7 @@ export interface EngineResult {
   conflict: Record<string, boolean>;                  /* 셀 충돌(빨강) */
   ruleViol: Record<number, boolean>;                  /* 규칙 인덱스별 위반 */
 }
-export interface EngineOpts { looseSmallLarge: boolean; seqWrap: boolean; }
+export interface EngineOpts { looseSmallLarge: boolean; seqWrap: boolean; voicedChain?: VoicedChain; }
 
 /**
  * 제약 엔진 계산: 사용자 입력값으로부터 추론값·충돌·규칙 위반을 산출한다.
@@ -151,6 +162,7 @@ export interface EngineOpts { looseSmallLarge: boolean; seqWrap: boolean; }
 export function computeEngine(words: Word[], rulesIn: Rule[], opts: EngineOpts): EngineResult {
   var userChar: Record<string, string> = {}, allCells: string[] = [];
   var wrap = !!opts.seqWrap;
+  var voiced: VoicedChain = opts.voicedChain || 'row';
   var cellSet: Record<string, true> = {};
   words.forEach(function(w){ w.letters.forEach(function(l){ cellSet[l.cellId] = true; }); });
   words.forEach(function(w){
@@ -202,10 +214,10 @@ export function computeEngine(words: Word[], rulesIn: Rule[], opts: EngineOpts):
       if (r.ruleType !== 'gojuon_next') return;
       var s = r.sourceCell, t = r.targetCell;
       if (value[s] !== undefined && value[t] === undefined){
-        var nx = seqStepChar(value[s], r.order, r.step, wrap);
+        var nx = seqStepChar(value[s], r.order, r.step, wrap, voiced);
         if (nx !== null){ value[t] = nx; if (st[t] !== 'user') st[t] = 'inferred'; changed = true; }
       } else if (value[t] !== undefined && value[s] === undefined){
-        var pv = seqStepChar(value[t], r.order, -r.step, wrap);
+        var pv = seqStepChar(value[t], r.order, -r.step, wrap, voiced);
         if (pv !== null){ value[s] = pv; if (st[s] !== 'user') st[s] = 'inferred'; changed = true; }
       }
     });
@@ -242,7 +254,7 @@ export function computeEngine(words: Word[], rulesIn: Rule[], opts: EngineOpts):
       var a2 = graphPhoneme(vs), b2 = graphPhoneme(vt);
       if (a2.consonant !== null && b2.consonant !== null && a2.consonant !== b2.consonant) ruleViol[r._idx] = true;
     } else if (r.ruleType === 'gojuon_next'){
-      var nx2 = seqStepChar(vs, r.order, r.step, wrap);
+      var nx2 = seqStepChar(vs, r.order, r.step, wrap, voiced);
       if (nx2 === null || !seqCharEq(nx2, vt, r.order)) ruleViol[r._idx] = true;
     }
   });

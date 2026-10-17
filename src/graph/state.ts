@@ -1,6 +1,8 @@
 /* 규칙 그래프 — 상태 + localStorage 저장/복원 */
 import type { Word, Rule, Positions, Letter } from './model';
 import { findLetterIn } from './model';
+import type { VoicedChain } from './engine';
+import { VOICED_CHAIN_ORDER } from './engine';
 
 const LS_GRAPH = 'nazotoki-graph-v1';
 
@@ -10,11 +12,12 @@ export interface GraphState {
   positions: Positions;      /* {[wordIndex]: {x,y}} 단어 박스 원점 */
   looseSmallLarge: boolean;  /* 같은 글자 규칙에서 작은⇄큰을 같은 글자로 취급 */
   seqWrap: boolean;          /* '다음 글자' 규칙이 순서의 끝을 넘으면 처음으로 순환 (ん→あ 등) */
+  voicedChain: VoicedChain;  /* 탁음 '다음 글자': 행 안에서만 / が→ざ→だ→ば 이어서 / ぱ행까지 이어서 */
   showEdges: boolean;        /* 규칙선 표시 여부 — 끄면 선만 숨기고 규칙·추론은 유지 */
 }
 
 
-export const graphState: GraphState = { words: [], rules: [], positions: {}, looseSmallLarge: false, seqWrap: false, showEdges: true };
+export const graphState: GraphState = { words: [], rules: [], positions: {}, looseSmallLarge: false, seqWrap: false, voicedChain: 'row', showEdges: true };
 
 /** 현재 상태에서 cellId 의 letter (없으면 null) */
 export function graphFindLetter(cellId: string): Letter | null { return findLetterIn(graphState.words, cellId); }
@@ -33,6 +36,7 @@ export function graphLoadState(): void {
     graphState.positions = (parsed.positions && typeof parsed.positions === 'object') ? parsed.positions : {};
     graphState.looseSmallLarge = !!parsed.looseSmallLarge;
     graphState.seqWrap = !!parsed.seqWrap;
+    graphState.voicedChain = VOICED_CHAIN_ORDER.includes(parsed.voicedChain) ? parsed.voicedChain : 'row';  /* 필드 없던 구버전 저장분은 기본값 */
     graphState.showEdges = parsed.showEdges !== false;  /* 필드 없던 구버전 저장분은 표시(기본값) */
     /* 레거시 same_char_sl 규칙 → same_char 로 통합 */
     graphState.rules.forEach(function(r){ if ((r.ruleType as string) === 'same_char_sl') r.ruleType = 'same_char'; });
@@ -62,6 +66,7 @@ export function graphSaveState(): void {
     positions: graphState.positions,
     looseSmallLarge: graphState.looseSmallLarge,
     seqWrap: graphState.seqWrap,
+    voicedChain: graphState.voicedChain,
     showEdges: graphState.showEdges,
   };
   localStorage.setItem(LS_GRAPH, JSON.stringify(toSave));

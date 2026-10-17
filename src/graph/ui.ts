@@ -11,7 +11,7 @@ import {
   graphUpdateMetrics, graphBoxSize, graphComputeLayout, graphRemapPositions,
 } from './layout';
 import { graphState, graphFindLetter, graphLoadState, graphSaveState, graphResetContent } from './state';
-import { GRAPH_RULE_DEFS, GRAPH_CELL_TYPE_BADGE, computeEngine, cellTypeConvert } from './engine';
+import { GRAPH_RULE_DEFS, GRAPH_CELL_TYPE_BADGE, VOICED_CHAIN_ORDER, VOICED_CHAIN_LABEL, computeEngine, cellTypeConvert } from './engine';
 import type { CellType, EngineResult } from './engine';
 
 /** 엔진 계산 결과 (저장하지 않음 — 매번 재계산) */
@@ -1206,7 +1206,8 @@ function graphRuleLabel(r: Rule | undefined): string {
   if (r.ruleType === 'same_consonant') return '자음 같음';
   if (r.ruleType === 'gojuon_next'){
     var seqName = r.order === 'iroha' ? '이로하' : r.order === 'alphabet' ? '알파벳' : '오십음도';
-    return seqName + ' 다음' + ((r.step || 1) > 1 ? ' +' + r.step : '') + (graphState.seqWrap ? ' (순환)' : '');
+    var voicedNote = (r.order === 'gojuon' && graphState.voicedChain !== 'row') ? ' (탁음 ' + (graphState.voicedChain === 'dakuten_handakuten' ? 'が→ば→ぱ' : 'が→ば') + ' 이어서)' : '';
+    return seqName + ' 다음' + ((r.step || 1) > 1 ? ' +' + r.step : '') + (graphState.seqWrap ? ' (순환)' : '') + voicedNote;
   }
   return r.ruleType;
 }
@@ -1229,7 +1230,7 @@ function graphRenderLegend(): void {
     item(lineSwatch('#0891b2', true, false), '같은 글자 (탁점 떼기)') +
     item(lineSwatch('#16a34a', false, false), '모음 같음') +
     item(lineSwatch('#9333ea', false, false), '자음 같음') +
-    item(lineSwatch('#ea580c', false, true), '오십음도 다음' + (graphState.seqWrap ? ' (순환)' : '')) +
+    item(lineSwatch('#ea580c', false, true), '오십음도 다음' + (graphState.seqWrap ? ' (순환)' : '') + (graphState.voicedChain === 'row' ? '' : graphState.voicedChain === 'dakuten_handakuten' ? ' (탁음 が→ば→ぱ 이어서)' : ' (탁음 が→ば 이어서)')) +
     item(lineSwatch('#0d9488', false, true), '이로하 다음' + (graphState.seqWrap ? ' (순환)' : '')) +
     item(lineSwatch('#ca8a04', false, true), '알파벳 다음' + (graphState.seqWrap ? ' (순환)' : '')) +
     item(lineSwatch('#ef4444', true, false), '규칙 위반') +
@@ -1334,6 +1335,25 @@ export function graphInit(): void {
       graphState.seqWrap = !graphState.seqWrap;
       graphSaveState();
       syncWrap();
+      graphRender();
+      graphRefreshEdgePopLabel();
+    });
+  }
+
+  /* 탁음 '다음 글자' 처리 전역 토글 — 행 안에서만 → が→ざ→だ→ば → ぱ행까지 (순환) */
+  const voicedBtn = document.getElementById('graphVoicedToggle');
+  if (voicedBtn) {
+    const syncVoiced = function() {
+      voicedBtn.classList.toggle('on', graphState.voicedChain !== 'row');
+      voicedBtn.setAttribute('aria-pressed', String(graphState.voicedChain !== 'row'));
+      voicedBtn.textContent = '탁음 다음: ' + VOICED_CHAIN_LABEL[graphState.voicedChain];
+    };
+    syncVoiced();
+    voicedBtn.addEventListener('click', function() {
+      const i = VOICED_CHAIN_ORDER.indexOf(graphState.voicedChain);
+      graphState.voicedChain = VOICED_CHAIN_ORDER[(i + 1) % VOICED_CHAIN_ORDER.length];
+      graphSaveState();
+      syncVoiced();
       graphRender();
       graphRefreshEdgePopLabel();
     });

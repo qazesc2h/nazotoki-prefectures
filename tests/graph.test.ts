@@ -99,6 +99,23 @@ describe('시퀀스(다음 글자)', () => {
     expect(seqStepChar('が', 'gojuon', 2, false)).toBe('ぐ');
     expect(seqStepChar('ゃ', 'gojuon', 1, false)).toBeNull();
   });
+  it('탁음 행 잇기: が→ざ→だ→ば(→ぱ), 청음표와는 섞지 않음', () => {
+    expect(seqStepChar('ご', 'gojuon', 1, false, 'dakuten')).toBe('ざ');
+    expect(seqStepChar('ぞ', 'gojuon', 1, false, 'dakuten')).toBe('だ');
+    expect(seqStepChar('ど', 'gojuon', 1, false, 'dakuten')).toBe('ば');
+    expect(seqStepChar('ぼ', 'gojuon', 1, false, 'dakuten')).toBeNull();
+    expect(seqStepChar('ぼ', 'gojuon', 1, true, 'dakuten')).toBe('が');
+    expect(seqStepChar('ぼ', 'gojuon', 1, false, 'dakuten_handakuten')).toBe('ぱ');
+    expect(seqStepChar('ぽ', 'gojuon', 1, true, 'dakuten_handakuten')).toBe('が');
+    expect(seqStepChar('ざ', 'gojuon', -1, false, 'dakuten')).toBe('ご');
+    expect(seqStepChar('が', 'gojuon', 7, false, 'dakuten')).toBe('ず');
+    /* ぱ행 미포함 모드에서 ぱ행은 자기 행 안에서만 */
+    expect(seqStepChar('ぽ', 'gojuon', 1, false, 'dakuten')).toBeNull();
+    expect(seqStepChar('ぽ', 'gojuon', 1, true, 'dakuten')).toBe('ぱ');
+    /* 청음·탁음 경계는 어느 모드에서도 넘지 않음 */
+    expect(seqStepChar('ん', 'gojuon', 1, true, 'dakuten_handakuten')).toBe('あ');
+    expect(seqStepChar('ご', 'gojuon', 1, false, 'row')).toBeNull();
+  });
   it('이로하 · 알파벳(대소문자 유지, 전각 허용)', () => {
     expect(seqStepChar('い', 'iroha', 1, false)).toBe('ろ');
     expect(seqStepChar('す', 'iroha', 1, true)).toBe('い');
@@ -155,6 +172,16 @@ describe('규칙 엔진', () => {
     const wrapCase = words('ん', 'あ');
     expect(computeEngine(wrapCase, [rule('0-0', '1-0', 'gojuon_next')], OPTS).ruleViol[0]).toBe(true);
     expect(computeEngine(wrapCase, [rule('0-0', '1-0', 'gojuon_next')], { ...OPTS, seqWrap: true }).ruleViol[0]).toBeUndefined();
+  });
+
+  it('엔진: 탁음 행 잇기 옵션에 따라 추론·검증이 달라진다', () => {
+    const ws = words('ご', 'ざ');
+    const next = [rule('0-0', '1-0', 'gojuon_next')];
+    expect(computeEngine(ws, next, OPTS).ruleViol[0]).toBe(true);
+    expect(computeEngine(ws, next, { ...OPTS, voicedChain: 'dakuten' }).ruleViol[0]).toBeUndefined();
+    const blank = words('ど', '＿').map(w => ({ ...w, letters: w.letters.map(l => l.char === '＿' ? { ...l, char: '' } : l) }));
+    expect(computeEngine(blank, next, OPTS).value['1-0']).toBeUndefined();
+    expect(computeEngine(blank, next, { ...OPTS, voicedChain: 'dakuten' }).value['1-0']).toBe('ば');
   });
 
   it('탁점 떼기 · 모음/자음 검증 · 비교불가 칸은 통과', () => {
