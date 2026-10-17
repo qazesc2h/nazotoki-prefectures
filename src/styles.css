@@ -299,8 +299,8 @@ svg.graph-canvas { display: block; min-width: 100%; touch-action: pan-x pan-y; u
 
 /* 규칙 엔진: 연결 모드 · 에지 · 메뉴 · 추론/충돌 */
 #graph-canvas-wrap.connect-mode svg.graph-canvas { cursor: crosshair; }
-#graphConnectToggle.on, #graphLooseToggle.on { background: var(--accent); color: #3a2a00; font-weight: 700; }
-@media (prefers-color-scheme: dark){ #graphConnectToggle.on, #graphLooseToggle.on { color: #1a1205; } }
+#graphConnectToggle.on, #graphLooseToggle.on, #graphVoicedToggle.on { background: var(--accent); color: #3a2a00; font-weight: 700; }
+@media (prefers-color-scheme: dark){ #graphConnectToggle.on, #graphLooseToggle.on, #graphVoicedToggle.on { color: #1a1205; } }
 .graph-edge { cursor: pointer; }
 .graph-word-slot.graph-inferred { color: var(--muted); font-style: italic; border-bottom-style: dashed; }
 .graph-word-slot.graph-conflict { color: #ef4444; border-bottom-color: #ef4444; }
