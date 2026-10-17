@@ -56,7 +56,18 @@ src/
   graph/engine.ts       규칙 엔진 (오십음도/이로하/알파벳 순서, 음운, 칸 타입, 제약 전파·검증) — 순수
   graph/layout.ts       캔버스 박스 치수·자동 배치 — 순수
   graph/state.ts        규칙 그래프 상태 + 저장/복원
-  graph/ui.ts           단어 목록·캔버스·셀 편집기·규칙 연결·메뉴·범례
+  graph/ui.ts           규칙 그래프 진입점 — 전체 렌더 조립 + 초기화(전역 토글)
+  graph/word-list.ts    오른쪽 단어 목록(밑줄 슬롯) · 단어 입력 모드 · 삭제 확인
+  graph/canvas.ts       SVG 캔버스: 단어 박스·셀 렌더, 박스 드래그
+  graph/edges.ts        셀 좌표 · 규칙선 그리기 · 추론값/충돌을 셀·슬롯에 반영
+  graph/editor.ts       한 글자 셀 편집기 (IME 조합 대응)
+  graph/connect.ts      🔗 규칙 연결 모드(셀→셀 드래그) · 우클릭 셀 메뉴
+  graph/menus.ts        규칙 종류 메뉴 · 칸 타입 메뉴 · 규칙 생성
+  graph/rules.ts        규칙 라벨 · 범례 · 규칙선 선택/삭제 팝업
+  graph/form.ts         상단 폼(단어 추가·전체 삭제)
+  graph/engine-run.ts   현재 상태로 엔진을 돌린 결과 보관
+  graph/render-hook.ts  전체 재렌더 간접 호출(순환 import 방지)
+  graph/ui-state.ts     연결 모드·선택 규칙선 같은 휘발 UI 상태
   babanuki/model.ts     글자 비교 키·겹침 계산 — 순수 (시리토리도 재사용)
   babanuki/ui.ts        바바누키 탭
   shiritori/model.ts    끝/첫글자 규칙·방향 그래프·SCC·최장 체인 열거 — 순수
