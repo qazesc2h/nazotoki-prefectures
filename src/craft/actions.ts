@@ -178,6 +178,34 @@ export function unstash(id: number): void {
   craftState.steps.push('보관함에서 꺼냄 (#' + id + ')');
   craftSaveState(); craftRender();
 }
+/** 보관함을 전부 꺼내 작업대 오른쪽에 차례로 놓기 (되돌리기 한 번) */
+export function unstashAll(): void {
+  if (!craftState.stash.length) return;
+  pushUndo();
+  const doc = cloneDoc(craftState.doc);
+  const placed: number[] = [];
+  for (const it of craftState.stash) {
+    const b = bbox(it.facets.map(f => f.poly));
+    const at: Pt = doc.facets.length ? (() => { const db = docBounds(doc); return [Math.ceil(db.maxX) + 1, Math.floor(db.minY)] as Pt; })() : [0, 0];
+    const m = translate(at[0] - b.minX, at[1] - b.minY);
+    const maxZ = doc.facets.length ? Math.max(...doc.facets.map(f => f.z)) : -1;
+    it.facets.slice().sort((x, y) => x.z - y.z).forEach((f, i) => { const nf = { ...f, id: doc.nextId++, poly: applyPoly(m, f.poly), xf: compose(m, f.xf), z: maxZ + 1 + i }; doc.facets.push(nf); placed.push(nf.id); });
+  }
+  const n = craftState.stash.length;
+  craftState.doc = doc;
+  craftState.stash = [];
+  craftUi.selected = [];
+  craftState.steps.push('보관함 모두 꺼냄 (' + n + '개)');
+  craftSaveState(); craftRender();
+}
+export function deleteAllStash(): void {
+  if (!craftState.stash.length) return;
+  pushUndo();
+  const n = craftState.stash.length;
+  craftState.stash = [];
+  craftState.steps.push('보관함 모두 삭제 (' + n + '개)');
+  craftSaveState(); craftRender();
+}
 export function deleteStash(id: number): void {
   if (!craftState.stash.some(x => x.id === id)) return;
   pushUndo();

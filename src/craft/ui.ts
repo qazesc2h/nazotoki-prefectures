@@ -11,7 +11,7 @@ import { photos, paperColor } from './render';
 import { PALETTE } from './palette';
 import { initCanvas, redrawCanvas, cancelTool, finishCut, hasPendingCut, overlay, fitView } from './canvas';
 import { setCraftRenderer, craftRender, craftUi, setTool, setFoldOver, setShowGrid, setShowBackThrough, setZoom, resize, resetSheet, isPristine, sheetIsPristine, pieceCount, setCurSheet, addNewSheet, removeCurrentSheet, sheetOfFacet, setSheetColor,
-  nudge, rotateSelected, flipSelected, flipStackSelected, stashSelected, unstash, deleteStash, raiseSelected, lowerSelected, deleteSelected, doFlipAll, setCellText, setTextsBulk, textsToBulk, clearSteps, doUndo, doRedo } from './actions';
+  nudge, rotateSelected, flipSelected, flipStackSelected, stashSelected, unstash, deleteStash, unstashAll, deleteAllStash, raiseSelected, lowerSelected, deleteSelected, doFlipAll, setCellText, setTextsBulk, textsToBulk, clearSteps, doUndo, doRedo } from './actions';
 
 export { craftRender } from './actions';
 
@@ -301,6 +301,8 @@ export function craftInit(opts: { isActive: () => boolean }): void {
   });
   el('craft-photo-clear')?.addEventListener('click', async () => { const id = currentSheet().id; await setPhotoImage(id, craftUi.textSide, null); await savePhoto(photoKey(id, craftUi.textSide), null); craftRender(); });
   el('craft-bulk-apply')?.addEventListener('click', () => { const t = el<HTMLTextAreaElement>('craft-bulk'); if (t) setTextsBulk(currentSheet().id, craftUi.textSide, t.value); });
+  el('craft-stash-all-out')?.addEventListener('click', () => { cancelTool(); setTool('select'); unstashAll(); });
+  el('craft-stash-all-del')?.addEventListener('click', () => { askConfirm('보관함의 조각 ' + craftState.stash.length + '개를 모두 없앨까요? (되돌리기 가능)', { ok: '모두 삭제' }).then(ok => { if (ok) deleteAllStash(); }); });
   el('craft-steps-clear')?.addEventListener('click', clearSteps);
 
   /* 키보드 */

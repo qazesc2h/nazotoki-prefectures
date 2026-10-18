@@ -554,3 +554,5 @@ svg.poly-board.mode-hole .poly-cell, svg.poly-board.mode-letter .poly-cell { cur
 .craft-colors { display: flex; gap: 6px; flex-wrap: wrap; }
 .craft-swatch { width: 26px; height: 26px; border-radius: 50%; border: 3px solid; cursor: pointer; padding: 0; box-sizing: border-box; }
 .craft-swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
+.craft-stash-bulk { display: flex; gap: 6px; margin-top: 8px; }
+.craft-stash-bulk .btn { font-size: 12px; padding: 4px 10px; }
