@@ -165,9 +165,17 @@ export function toggleInf(key: string): void {
   const c = polyState.counts[key];
   setCount(key, c === 'inf' ? polyState.placements.filter(p => p.key === key).length : 'inf');
 }
-export function setAllOfSize(size: number, n: number): void {
-  for (const p of catalog()) if ((size === 0 ? !!p.custom : (!p.custom && p.size === size))) setCount(p.key, n);
+/** 피스 선택 패널에 지금 보이는 피스인가 (6칸 탭의 「주사위 전개도만」 필터 반영) */
+export function isPickerVisible(p: CatalogPiece, size: number): boolean {
+  if (size === 0) return !!p.custom;
+  if (p.custom || p.size !== size) return false;
+  if (size === 6 && polyState.cubeNetsOnly && !p.cubeNet) return false;
+  return true;
 }
+export function setAllOfSize(size: number, n: number): void {
+  for (const p of catalog()) if (isPickerVisible(p, size)) setCount(p.key, n);
+}
+export function setCubeNetsOnly(on: boolean): void { polyState.cubeNetsOnly = on; polySaveState(); polyRender(); }
 
 /* ---- 옵션 ---- */
 export function setAllowFlip(on: boolean): void {

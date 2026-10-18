@@ -48,6 +48,39 @@ export function isConnected(s: Shape): boolean {
   return seen.size === s.length;
 }
 
+/**
+ * 정육면체 전개도인가 (6칸 피스 전용). 한 칸을 바닥면으로 두고 인접 칸으로 정육면체를 굴려 가며
+ * 각 칸에 닿는 면을 기록한다 — 모든 칸의 면이 서로 다르면 접어서 정육면체가 된다.
+ * 면 번호 0~5, 마주보는 면은 5-n. 상태 = (바닥, 북쪽, 동쪽) 면.
+ */
+export function isCubeNet(s: Shape): boolean {
+  if (s.length !== 6) return false;
+  const idx = new Map(s.map((c, i) => [c[0] + ',' + c[1], i] as [string, number]));
+  const face: (number | null)[] = s.map(() => null);
+  type St = { down: number; north: number; east: number };
+  const roll = (st: St, dx: number, dy: number): St => {
+    const up = 5 - st.down;
+    if (dx === 1) return { down: st.east, north: st.north, east: up };
+    if (dx === -1) return { down: 5 - st.east, north: st.north, east: st.down };
+    if (dy === -1) return { down: st.north, north: up, east: st.east };
+    return { down: 5 - st.north, north: st.down, east: st.east };   /* dy === 1 (남쪽) */
+  };
+  const stack: [number, St][] = [[0, { down: 0, north: 1, east: 2 }]];
+  face[0] = 0;
+  while (stack.length) {
+    const [i, st] = stack.pop()!;
+    const [x, y] = s[i];
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, -1], [0, 1]] as Cell[]) {
+      const j = idx.get((x + dx) + ',' + (y + dy));
+      if (j === undefined) continue;
+      const ns = roll(st, dx, dy);
+      if (face[j] === null) { face[j] = ns.down; stack.push([j, ns]); }
+      else if (face[j] !== ns.down) return false;
+    }
+  }
+  return new Set(face).size === 6;
+}
+
 /* ---- 변형 ---- */
 export function rotateCW(s: Shape): Shape { return normalize(s.map(([x, y]) => [-y, x] as Cell)); }
 export function flipH(s: Shape): Shape { return normalize(s.map(([x, y]) => [-x, y] as Cell)); }

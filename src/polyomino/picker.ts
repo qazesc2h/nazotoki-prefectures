@@ -1,7 +1,7 @@
 /* 폴리오미노 — 피스 선택 패널 (크기 탭 · 피스 카드 −/＋/∞ · 자작 피스 그리기/저장/삭제) */
 import { polyState, polySaveState } from './state';
 import { shapeSvg, pieceColor } from './draw';
-import { catalog, bumpCount, toggleInf, setAllOfSize, addCustom, removeCustom, polyRender } from './actions';
+import { catalog, bumpCount, toggleInf, setAllOfSize, addCustom, removeCustom, polyRender, isPickerVisible, setCubeNetsOnly } from './actions';
 import { normalize, isConnected, shapeSize } from './model';
 import type { Cell } from './model';
 
@@ -20,10 +20,14 @@ export function renderPicker(): void {
   custom.classList.toggle('hidden', !isCustom);
   wrap.classList.toggle('hidden', isCustom);
   wrap.innerHTML = '';
+  const filt = document.getElementById('poly-cube-filter') as HTMLElement | null;
+  const filtCb = document.getElementById('poly-cube-only') as HTMLInputElement | null;
+  if (filt) filt.classList.toggle('hidden', polyState.sizeTab !== 6);
+  if (filtCb) filtCb.checked = polyState.cubeNetsOnly;
   if (!isCustom) {
     for (const p of catalog()) {
-      if (p.custom || p.size !== polyState.sizeTab) continue;
-      wrap.appendChild(pieceCard(p.key, p.name, p.shape, pieceColor(p.colorIdx)));
+      if (!isPickerVisible(p, polyState.sizeTab)) continue;
+      wrap.appendChild(pieceCard(p.key, p.name + (p.cubeNet ? ' 🎲' : ''), p.shape, pieceColor(p.colorIdx)));
     }
   } else {
     renderCustomEditor();
@@ -107,6 +111,7 @@ export function initPicker(): void {
     polyState.sizeTab = Number(b.dataset.size); polySaveState(); polyRender();
   });
   document.getElementById('poly-all-one')?.addEventListener('click', () => setAllOfSize(polyState.sizeTab, 1));
+  document.getElementById('poly-cube-only')?.addEventListener('change', e => setCubeNetsOnly((e.target as HTMLInputElement).checked));
   document.getElementById('poly-size-zero')?.addEventListener('click', () => setAllOfSize(polyState.sizeTab, 0));
 
   const grid = document.getElementById('poly-custom-grid');
