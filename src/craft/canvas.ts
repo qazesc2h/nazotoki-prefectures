@@ -3,7 +3,7 @@ import { apply, invert } from './geom';
 import type { Pt } from './geom';
 import { topFacetAt, pieceOf, movePiece, snapPoints, nearestSnap, isBack, layersAt } from './model';
 import type { Doc, Layer } from './model';
-import { craftState } from './state';
+import { craftState, sheetById } from './state';
 import type { Side } from './state';
 import { drawCraft, fromPx, toPx } from './render';
 import type { Overlay, View } from './render';
@@ -18,7 +18,7 @@ const SNAP_R = 0.32;
 
 export interface CanvasHooks {
   onStatus(msg: string): void;                                  /* 도구 진행 안내 */
-  onTextCell(side: Side, r: number, c: number, px: Pt): void;   /* 글자 도구: 칸을 눌렀을 때 */
+  onTextCell(sheet: number, side: Side, r: number, c: number, px: Pt): void;   /* 글자 도구: 칸을 눌렀을 때 */
   onInspect(layers: Layer[]): void;                             /* 층 검사 결과 */
 }
 let hooks: CanvasHooks = { onStatus: () => {}, onTextCell: () => {}, onInspect: () => {} };
@@ -113,14 +113,15 @@ function onDown(e: PointerEvent): void {
     e.preventDefault();   /* mousedown 기본 동작(포커스 이동)으로 입력란이 바로 blur 되지 않게 */
     const f = topFacetAt(doc, wp);
     if (!f) return;
+    const sheet = sheetById(f.sheet); if (!sheet) return;
     const sp = apply(invert(f.xf), wp);
     const back = isBack(f);
     const u = Math.floor(sp[0] + 1e-9), r = Math.floor(sp[1] + 1e-9);
-    if (u < 0 || u >= doc.w || r < 0 || r >= doc.h) return;
-    const c = back ? doc.w - 1 - u : u;
+    if (u < 0 || u >= sheet.w || r < 0 || r >= sheet.h) return;
+    const c = back ? sheet.w - 1 - u : u;
     /* 칸 중심의 화면 위치 */
     const centerW = apply(f.xf, [u + 0.5, r + 0.5]);
-    hooks.onTextCell(back ? 'back' : 'front', r, c, view ? toPx(view, centerW) : [0, 0]);
+    hooks.onTextCell(f.sheet, back ? 'back' : 'front', r, c, view ? toPx(view, centerW) : [0, 0]);
     return;
   }
   if (tool === 'inspect') {

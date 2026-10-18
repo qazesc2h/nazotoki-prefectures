@@ -1,11 +1,11 @@
 /* 공작 — 캔버스 그리기. 작업대 좌표(칸 단위) → 화면 px 변환(View)과, 면을 층(z) 순서로 칠하는 painter 방식.
    각 면은 자기 다각형으로 클리핑한 뒤 종이색 → 사진 → 격자 → 글자 순으로 그리고, 테두리·접힘선을 긋는다. */
-import { compose, bbox } from './geom';
+import { compose, bbox, pointInPoly } from './geom';
 import type { Pt, Xf } from './geom';
 import { docBounds, isBack, classifyEdges, snapPoints } from './model';
 import type { Doc } from './model';
-import { craftState } from './state';
-import type { Side } from './state';
+import { craftState, sheetById, photoKey } from './state';
+import type { Side, Sheet } from './state';
 
 export interface View { ox: number; oy: number; zoom: number; cssW: number; cssH: number; }
 export const MARGIN = 1;   /* 종이 둘레 여백 (칸) */
@@ -29,16 +29,16 @@ export interface Overlay {
   inspectPt: Pt | null;      /* 층 검사 지점 */
   showSnaps: boolean;
 }
-/** 사진 (메모리) — 저장은 state.ts 의 IndexedDB */
-export const photos: Record<Side, HTMLImageElement | null> = { front: null, back: null };
+/** 사진 (메모리, 키 = "장id:면") — 저장은 state.ts 의 IndexedDB */
+export const photos: Record<string, HTMLImageElement | null> = {};
 
 const PAPER = { front: '#fffdf4', back: '#e3e7ea' };
 const PAPER_DARK = { front: '#f3efe0', back: '#9aa3aa' };
 function isDark(): boolean { return typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches; }
 
-function cellTextsOf(side: Side): [number, number, string][] {
+function cellTextsOf(sheet: Sheet, side: Side): [number, number, string][] {
   const out: [number, number, string][] = [];
-  const t = craftState.texts[side];
+  const t = sheet.texts[side];
   for (const k in t) { const s = t[k]; if (!s) continue; const [r, c] = k.split(',').map(Number); if (Number.isFinite(r) && Number.isFinite(c)) out.push([r, c, s]); }
   return out;
 }
@@ -58,7 +58,7 @@ export function drawCraft(canvas: HTMLCanvasElement, ov: Overlay): View {
   setXf([1, 0, 0, 1, 0, 0]);
   const dark = isDark();
   const paper = dark ? PAPER_DARK : PAPER;
-  const W = doc.w, H = doc.h;
+  const multi = craftState.sheets.length > 1;
   const facets = doc.facets.slice().sort((a, b) => a.z - b.z);
   const { outline, crease } = classifyEdges(doc);
   const through = craftState.showBackThrough;
@@ -68,6 +68,9 @@ export function drawCraft(canvas: HTMLCanvasElement, ov: Overlay): View {
   for (const f of facets) {
     const back = isBack(f);
     const side: Side = back ? 'back' : 'front';
+    const sheet = sheetById(f.sheet);
+    if (!sheet) continue;
+    const W = sheet.w, H = sheet.h;
     ctx.save();
     if (through) ctx.globalAlpha = 0.6;
     setXf([1, 0, 0, 1, 0, 0]);
@@ -77,7 +80,7 @@ export function drawCraft(canvas: HTMLCanvasElement, ov: Overlay): View {
     ctx.fillStyle = paper[side];
     ctx.fill();
     /* 사진: 이미지 px → 종이 좌표 → 작업대 → 화면 */
-    const img = photos[side];
+    const img = photos[photoKey(f.sheet, side)];
     if (img && img.naturalWidth) {
       const S: Xf = back ? [-W / img.naturalWidth, 0, 0, H / img.naturalHeight, W, 0] : [W / img.naturalWidth, 0, 0, H / img.naturalHeight, 0, 0];
       setXf(compose(V, compose(f.xf, S)));
@@ -94,7 +97,7 @@ export function drawCraft(canvas: HTMLCanvasElement, ov: Overlay): View {
       ctx.stroke();
     }
     /* 글자: 칸 중심에, 면이 놓인 방향대로 (뒷면은 좌우 반전 보정) */
-    const texts = cellTextsOf(side);
+    const texts = cellTextsOf(sheet, side);
     if (texts.length) {
       const ang = back ? Math.atan2(-f.xf[1], -f.xf[0]) : Math.atan2(f.xf[1], f.xf[0]);
       ctx.fillStyle = '#1a1a1a';
@@ -116,6 +119,20 @@ export function drawCraft(canvas: HTMLCanvasElement, ov: Overlay): View {
         if (img) { ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.strokeText(s, 0, 0); }
         ctx.fillText(s, 0, 0);
         ctx.restore();
+      }
+    }
+    /* 여러 장이면 장 번호를 종이 왼쪽 위 구석(앞면 기준 (0.35,0.35), 뒷면은 오른쪽 위)에 작게 */
+    if (multi) {
+      const cu = back ? W - 0.35 : 0.35, cv = 0.35;
+      const wp: Pt = [f.xf[0] * cu + f.xf[2] * cv + f.xf[4], f.xf[1] * cu + f.xf[3] * cv + f.xf[5]];
+      if (pointInPoly(wp, f.poly)) {
+        const q = toPx(v, wp);
+        setXf([1, 0, 0, 1, 0, 0]);
+        const rr = Math.max(7, v.zoom * 0.17);
+        ctx.beginPath(); ctx.arc(q[0], q[1], rr, 0, Math.PI * 2);
+        ctx.fillStyle = back ? 'rgba(40,50,70,.75)' : 'rgba(120,80,0,.75)'; ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.round(rr * 1.3) + 'px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(String(f.sheet), q[0], q[1] + 0.5);
       }
     }
     ctx.restore();

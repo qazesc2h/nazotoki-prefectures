@@ -1,5 +1,6 @@
 /* 폴리오미노 — 피스 선택 패널 (크기 탭 · 피스 카드 −/＋/∞ · 자작 피스 그리기/저장/삭제) */
 import { polyState, polySaveState } from './state';
+import { askConfirm, notify } from '../shared/dialog';
 import { shapeSvg, pieceColor } from './draw';
 import { catalog, bumpCount, toggleInf, setAllOfSize, addCustom, removeCustom, polyRender, isPickerVisible, setCubeNetsOnly } from './actions';
 import { normalize, isConnected, shapeSize } from './model';
@@ -86,7 +87,7 @@ function renderCustomEditor(): void {
   for (const p of catalog()) {
     if (!p.custom) continue;
     const id = Number(p.key.slice(2));
-    list.appendChild(pieceCard(p.key, p.name, p.shape, pieceColor(p.colorIdx), () => { if (confirm('자작 피스 「' + p.name + '」를 삭제할까요? 놓인 것도 함께 사라집니다.')) removeCustom(id); }));
+    list.appendChild(pieceCard(p.key, p.name, p.shape, pieceColor(p.colorIdx), () => { askConfirm('자작 피스 「' + p.name + '」를 삭제할까요? 놓인 것도 함께 사라집니다.', { ok: '삭제' }).then(ok => { if (ok) removeCustom(id); }); }));
   }
 }
 
@@ -130,8 +131,8 @@ export function initPicker(): void {
   document.getElementById('poly-custom-save')?.addEventListener('click', () => {
     const cells = [...drawn].map(k => k.split(',').map(Number) as Cell);
     const shape = normalize(cells);
-    if (!shape.length) { alert('칸을 하나 이상 칠하세요.'); return; }
-    if (!isConnected(shape)) { alert('칸이 변으로 모두 이어져 있어야 합니다.'); return; }
+    if (!shape.length) { notify('칸을 하나 이상 칠하세요.'); return; }
+    if (!isConnected(shape)) { notify('칸이 변으로 모두 이어져 있어야 합니다.'); return; }
     const { w, h } = shapeSize(shape);
     const rows: string[] = [];
     for (let y = 0; y < h; y++) { let r = ''; for (let x = 0; x < w; x++) r += shape.some(c => c[0] === x && c[1] === y) ? '#' : '.'; rows.push(r); }

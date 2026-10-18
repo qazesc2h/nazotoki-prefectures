@@ -1,5 +1,6 @@
 /* 규칙 그래프 — 오른쪽 단어 목록(밑줄 슬롯) + 단어 입력 모드 + 삭제 */
 import { graphRemoveWord, graphCountWordRules, graphWordUserText, graphParseWordInput, graphApplyWordChars } from './model';
+import { askConfirm, notify } from '../shared/dialog';
 import type { Word } from './model';
 import { graphRemapPositions } from './layout';
 import { graphState, graphFindLetter, graphSaveState } from './state';
@@ -153,7 +154,7 @@ export function graphSaveWordEdit(index: number): void {
   var chars = graphParseWordInput(inp.value);
   var newWords = graphApplyWordChars(graphState.words, index, chars);
   if (!newWords) {
-    alert('단어는 1~12글자까지 넣을 수 있습니다.');
+    notify('단어는 1~12글자까지 넣을 수 있습니다.');
     try { inp.focus(); } catch (_) {}
     return;
   }
@@ -182,21 +183,25 @@ export function graphRenderWordList(): void {
       if (!w) return;
       var userChars = w.letters.filter(function(l) { return l.source === 'user' && l.char; }).length;
       var ruleCount = graphCountWordRules(graphState.rules, idx);
+      var doRemove = function() {
+        if (graphWordEdit && graphWordEdit.index === idx) graphWordEdit = null;
+        var result = graphRemoveWord(graphState.words, graphState.rules, idx);
+        graphState.words = result.words;
+        graphState.rules = result.rules;
+        graphState.positions = graphRemapPositions(graphState.positions, idx);
+        if (graphWordEdit && graphWordEdit.index > idx) graphWordEdit.index -= 1;   /* 뒤 단어 인덱스가 1씩 당겨짐 */
+        graphSaveState();
+        graphRender();
+      };
       if (userChars > 0 || ruleCount > 0) {
         var shown = graphWordUserText(w);
         var what = [];
         if (userChars > 0) what.push('입력한 글자 ' + userChars + '개');
         if (ruleCount > 0) what.push('연결된 규칙선 ' + ruleCount + '개');
-        if (!confirm('단어 「' + shown + '」(' + w.charCount + '자)를 삭제할까요?\n' + what.join(' · ') + '가 함께 사라집니다.')) return;
+        askConfirm('단어 「' + shown + '」(' + w.charCount + '자)를 삭제할까요?\n' + what.join(' · ') + '가 함께 사라집니다.', { ok: '삭제' }).then(function(ok) { if (ok) doRemove(); });
+        return;
       }
-      if (graphWordEdit && graphWordEdit.index === idx) graphWordEdit = null;
-      var result = graphRemoveWord(graphState.words, graphState.rules, idx);
-      graphState.words = result.words;
-      graphState.rules = result.rules;
-      graphState.positions = graphRemapPositions(graphState.positions, idx);
-      if (graphWordEdit && graphWordEdit.index > idx) graphWordEdit.index -= 1;   /* 뒤 단어 인덱스가 1씩 당겨짐 */
-      graphSaveState();
-      graphRender();
+      doRemove();
     });
   });
 

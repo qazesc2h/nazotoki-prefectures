@@ -117,3 +117,17 @@ export function collinearOverlap(a: Pt, b: Pt, c: Pt, d: Pt): number {
   const lo = Math.max(0, Math.min(proj(c), proj(d))), hi = Math.min(len, Math.max(proj(c), proj(d)));
   return Math.max(0, hi - lo);
 }
+
+/** 두 볼록 다각형이 면적을 두고 겹치는가 (변만 맞닿으면 false). 면은 사각형을 직선으로 잘라 만들어지므로 항상 볼록 */
+export function polysOverlap(a: Poly, b: Poly, tol = 1e-6): boolean {
+  if (a.length < 3 || b.length < 3) return false;
+  const axes = (poly: Poly) => poly.map((p, i) => { const q = poly[(i + 1) % poly.length]; return [-(q[1] - p[1]), q[0] - p[0]] as Pt; });
+  for (const ax of [...axes(a), ...axes(b)]) {
+    const len = Math.hypot(ax[0], ax[1]); if (len < EPS) continue;
+    const u: Pt = [ax[0] / len, ax[1] / len];
+    const pr = (poly: Poly) => { let lo = Infinity, hi = -Infinity; for (const p of poly) { const v = p[0] * u[0] + p[1] * u[1]; if (v < lo) lo = v; if (v > hi) hi = v; } return [lo, hi]; };
+    const [a0, a1] = pr(a), [b0, b1] = pr(b);
+    if (a1 - b0 <= tol || b1 - a0 <= tol) return false;   /* 이 축에서 떨어져 있거나 변만 닿음 */
+  }
+  return true;
+}

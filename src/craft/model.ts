@@ -1,31 +1,52 @@
 /* 공작 — 종이 모델 (순수 함수, DOM 비의존)
-   종이는 면(Facet)의 집합. 각 면은 작업대 좌표의 다각형(poly)과, 종이 원래 좌표(격자 단위, 앞면 기준)→작업대 변환(xf)을 가진다.
-   det(xf) < 0 이면 뒷면이 위를 향한 상태. 자른 선(cuts)은 종이 좌표로 기록하고, 면끼리 종이 좌표에서 변을 공유하면서
-   그 변이 잘리지 않았으면 같은 조각(연결)으로 본다. 접기는 선 한쪽의 면을 반사하고 층(z)을 뒤집어 위/아래로 얹는 것. */
-import { apply, applyPoly, compose, det, invert, splitPoly, side, area, centroid, bbox, pointInPoly, distToSegment, collinearOverlap, reflectAcross, mirrorX, translate, rotateAbout, EPS } from './geom';
+   종이는 여러 장일 수 있고(sheet id), 각 장은 면(Facet)의 집합. 각 면은 작업대 좌표의 다각형(poly)과,
+   그 장의 원래 좌표(격자 단위, 앞면 기준)→작업대 변환(xf)을 가진다. det(xf) < 0 이면 뒷면이 위를 향한 상태.
+   자른 선(cuts)은 장별 종이 좌표로 기록하고, 같은 장의 면끼리 종이 좌표에서 변을 공유하면서 그 변이 잘리지 않았으면
+   같은 조각(연결)으로 본다. 접기는 선 한쪽의 면을 반사하고 층(z)을 뒤집어 위/아래로 얹는 것. */
+import { apply, applyPoly, compose, det, invert, splitPoly, side, area, centroid, bbox, pointInPoly, distToSegment, collinearOverlap, reflectAcross, mirrorX, translate, rotateAbout, polysOverlap, EPS } from './geom';
 import type { Pt, Poly, Xf } from './geom';
 
-export interface Facet { id: number; poly: Poly; xf: Xf; z: number; }
-export interface Cut { a: Pt; b: Pt; }     /* 종이 좌표 */
-export interface Doc { w: number; h: number; facets: Facet[]; cuts: Cut[]; nextId: number; }
+export interface Facet { id: number; sheet: number; poly: Poly; xf: Xf; z: number; }
+export interface Cut { sheet: number; a: Pt; b: Pt; }     /* 그 장의 종이 좌표 */
+export interface Doc { facets: Facet[]; cuts: Cut[]; nextId: number; }
 
-/** 새 종이: 격자 w×h 를 덮는 윤곽(기본 직사각형) 한 면 */
+const ID: Xf = [1, 0, 0, 1, 0, 0];
+/** 새 문서: 장 1 이 격자 w×h 를 덮는 한 면으로 원점에 놓임 */
 export function newDoc(w: number, h: number, outline?: Poly): Doc {
-  const poly: Poly = outline && outline.length >= 3 ? outline.map(p => [p[0], p[1]] as Pt) : [[0, 0], [w, 0], [w, h], [0, h]];
-  return { w, h, facets: [{ id: 1, poly, xf: [1, 0, 0, 1, 0, 0], z: 0 }], cuts: [], nextId: 2 };
+  const d: Doc = { facets: [], cuts: [], nextId: 1 };
+  return addSheet(d, 1, w, h, [0, 0], outline);
 }
+/** 장 추가: 평평한 새 종이 한 면을 작업대 at 위치에 (맨 위층으로) 놓는다 */
+export function addSheet(doc: Doc, sheet: number, w: number, h: number, at: Pt, outline?: Poly): Doc {
+  const out = cloneDoc(doc);
+  const base: Poly = outline && outline.length >= 3 ? outline.map(p => [p[0], p[1]] as Pt) : [[0, 0], [w, 0], [w, h], [0, h]];
+  const xf = translate(at[0], at[1]);
+  const z = out.facets.length ? Math.max(...out.facets.map(f => f.z)) + 1 : 0;
+  out.facets.push({ id: out.nextId++, sheet, poly: applyPoly(xf, base), xf, z });
+  return out;
+}
+/** 장 제거 (그 장의 면·자른 선 모두) */
+export function removeSheet(doc: Doc, sheet: number): Doc {
+  const out = cloneDoc(doc);
+  out.facets = out.facets.filter(f => f.sheet !== sheet);
+  out.cuts = out.cuts.filter(c => c.sheet !== sheet);
+  return out;
+}
+export function sheetIds(doc: Doc): number[] { return [...new Set(doc.facets.map(f => f.sheet))].sort((a, b) => a - b); }
 export function cloneDoc(d: Doc): Doc { return JSON.parse(JSON.stringify(d)); }
 export function isBack(f: Facet): boolean { return det(f.xf) < 0; }
+export function isFlat(f: Facet): boolean { return f.xf.every((v, i) => Math.abs(v - ID[i]) < 1e-9); }
 /** 면의 종이 좌표 다각형 */
 export function sheetPoly(f: Facet): Poly { return applyPoly(invert(f.xf), f.poly); }
 
 /* ---- 연결(조각) ---- */
-function onCut(cuts: Cut[], p: Pt): boolean {
-  for (const c of cuts) { const r = distToSegment(p, c.a, c.b); if (r.d < 1e-5) return true; }
+function onCut(cuts: Cut[], sheet: number, p: Pt): boolean {
+  for (const c of cuts) { if (c.sheet !== sheet) continue; const r = distToSegment(p, c.a, c.b); if (r.d < 1e-5) return true; }
   return false;
 }
-/** 두 면이 종이 좌표에서 변을 공유하고 그 변(의 일부)이 잘리지 않았으면 연결 */
+/** 같은 장의 두 면이 종이 좌표에서 변을 공유하고 그 변(의 일부)이 잘리지 않았으면 연결 */
 function adjacent(a: Facet, b: Facet, cuts: Cut[], sa: Poly, sb: Poly): boolean {
+  if (a.sheet !== b.sheet) return false;
   for (let i = 0; i < sa.length; i++) {
     const p = sa[i], q = sa[(i + 1) % sa.length];
     for (let j = 0; j < sb.length; j++) {
@@ -39,7 +60,7 @@ function adjacent(a: Facet, b: Facet, cuts: Cut[], sa: Poly, sb: Poly): boolean 
       const lo = Math.max(0, Math.min(proj(r), proj(s))), hi = Math.min(len, Math.max(proj(r), proj(s)));
       for (const f of [0.1, 0.3, 0.5, 0.7, 0.9]) {
         const t = lo + (hi - lo) * f;
-        if (!onCut(cuts, [p[0] + ux * t, p[1] + uy * t])) return true;
+        if (!onCut(cuts, a.sheet, [p[0] + ux * t, p[1] + uy * t])) return true;
       }
     }
   }
@@ -62,6 +83,25 @@ export function components(doc: Doc): number[][] {
 export function pieceOf(doc: Doc, facetId: number): number[] {
   return components(doc).find(c => c.includes(facetId)) || [facetId];
 }
+export function facetById(doc: Doc, id: number): Facet | undefined { return doc.facets.find(f => f.id === id); }
+
+/** 포개진 묶음: ids 가 속한 조각과 (작업대에서) 면적을 두고 겹치는 조각들을 연쇄적으로 모은 면 id 목록 — 통째로 뒤집기·옮기기용 */
+export function stackOf(doc: Doc, ids: number[]): number[] {
+  const comps = components(doc);
+  const inSet = new Set<number>();
+  const queue: number[][] = [];
+  for (const c of comps) if (c.some(id => ids.includes(id))) { queue.push(c); c.forEach(id => inSet.add(id)); }
+  const polyOf = (id: number) => facetById(doc, id)!.poly;
+  while (queue.length) {
+    const cur = queue.pop()!;
+    for (const c of comps) {
+      if (c.some(id => inSet.has(id))) continue;
+      const hit = c.some(x => cur.some(y => polysOverlap(polyOf(x), polyOf(y))));
+      if (hit) { queue.push(c); c.forEach(id => inSet.add(id)); }
+    }
+  }
+  return doc.facets.filter(f => inSet.has(f.id)).map(f => f.id);
+}
 
 /* ---- 조회 ---- */
 export function facetsAt(doc: Doc, pt: Pt): Facet[] {
@@ -74,6 +114,7 @@ export function layersAt(doc: Doc, pt: Pt): Layer[] {
   return facetsAt(doc, pt).map(f => ({ facet: f, back: isBack(f), sheetPt: apply(invert(f.xf), pt) }));
 }
 export function docBounds(doc: Doc) { return bbox(doc.facets.map(f => f.poly)); }
+export function sheetBounds(doc: Doc, sheet: number) { return bbox(doc.facets.filter(f => f.sheet === sheet).map(f => f.poly)); }
 
 /* ---- 자르기 ---- */
 function segmentTouchesPoly(a: Pt, b: Pt, poly: Poly): boolean {
@@ -95,12 +136,12 @@ export function cutSegment(doc: Doc, a: Pt, b: Pt, onlyFacetIds?: number[]): Doc
     if (!segmentTouchesPoly(a, b, f.poly)) { next.push(f); continue; }
     const { left, right } = splitPoly(f.poly, a, b);
     if (!left.length || !right.length) { next.push(f); continue; }   /* 선이 면을 가르지 않음(가장자리만 스침) */
-    next.push({ id: f.id, poly: left, xf: f.xf, z: f.z });
-    next.push({ id: out.nextId++, poly: right, xf: f.xf, z: f.z });
+    next.push({ ...f, poly: left });
+    next.push({ ...f, id: out.nextId++, poly: right });
     /* 실제 선분이 이 면 안을 지나는 부분만 자른 선으로 기록 (종이 좌표) */
     const inv = invert(f.xf);
     const clipped = clipSegmentToPoly(a, b, f.poly);
-    for (const [p, q] of clipped) out.cuts.push({ a: apply(inv, p), b: apply(inv, q) });
+    for (const [p, q] of clipped) out.cuts.push({ sheet: f.sheet, a: apply(inv, p), b: apply(inv, q) });
   }
   out.facets = next;
   return out;
@@ -150,7 +191,7 @@ export function foldPiece(doc: Doc, pieceIds: number[], a: Pt, b: Pt, movePt: Pt
     if (right.length) parts.push({ poly: right, mv: moveSign < 0 });
     if (!parts.length) { next.push(f); continue; }
     parts.forEach((p, i) => {
-      const nf: Facet = { id: i === 0 ? f.id : out.nextId++, poly: p.poly, xf: f.xf, z: f.z };
+      const nf: Facet = { ...f, id: i === 0 ? f.id : out.nextId++, poly: p.poly };
       if (p.mv) { nf.poly = applyPoly(R, nf.poly); nf.xf = compose(R, nf.xf); moving.push(nf); }
       next.push(nf);
     });
@@ -187,7 +228,7 @@ export function flipPiece(doc: Doc, ids: number[]): Doc {
   fs.forEach((f, i) => { f.z = zs[zs.length - 1 - i]; });
   return out;
 }
-/** 조각 전체 뒤집어 보기: 모든 면을 반사하고 층 순서 전체 반전 (작업대를 뒤에서 본 것과 같음) */
+/** 전체 뒤집어 보기: 모든 면을 반사하고 층 순서 전체 반전 (작업대를 뒤에서 본 것과 같음) */
 export function flipAll(doc: Doc): Doc {
   const ids = doc.facets.map(f => f.id);
   return flipPiece(doc, ids);
@@ -254,10 +295,10 @@ export function classifyEdges(doc: Doc): { outline: Map<number, [Pt, Pt][]>; cre
       const p = sp[i], q = sp[(i + 1) % sp.length];
       const m: Pt = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
       const edge: [Pt, Pt] = [f.poly[i], f.poly[(i + 1) % f.poly.length]];
-      if (onCut(doc.cuts, m)) { o.push(edge); continue; }
+      if (onCut(doc.cuts, f.sheet, m)) { o.push(edge); continue; }
       let shared: Facet | null = null;
       for (let gj = 0; gj < doc.facets.length && !shared; gj++) {
-        if (gj === fi) continue;
+        if (gj === fi || doc.facets[gj].sheet !== f.sheet) continue;
         const sq = sheets[gj];
         for (let j = 0; j < sq.length; j++) if (collinearOverlap(p, q, sq[j], sq[(j + 1) % sq.length]) > 1e-6) { shared = doc.facets[gj]; break; }
       }

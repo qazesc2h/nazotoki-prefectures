@@ -1,6 +1,7 @@
 /* 폴리오미노 — 진입점: 전체 렌더 조립 + 상단 컨트롤·선택 피스 도구·키보드 초기화.
    세부는 board(도면) · tray(트레이) · picker(피스 선택/자작) · solve(답 탐색) · drag(드래그) · actions(상태 변경) 참고 */
 import { bindNumericInput } from '../shared/inputs';
+import { askConfirm } from '../shared/dialog';
 import { polyState, polyLoadState, polySaveState, boardOf, undo, redo, canUndo, canRedo } from './state';
 import { computeCoverage, isComplete, openCellCount, readLetters } from './model';
 import { setPolyRenderer, polyRender, polyUi, selectedArea, pieceByKey, resize, setEditMode, setAllowRotate, setAllowFlip, setForbidOverlap, setCoverLetters, resetPlacements, clearAll, rotatePlacement, flipPlacement, removePlacement, setMemo, selectPlacement, movePlacement, hasLetters } from './actions';
@@ -129,7 +130,7 @@ export function polyInit(opts: { isActive: () => boolean }): void {
   document.getElementById('poly-undo')?.addEventListener('click', () => { if (undo()) { polySaveState(); polyRender(); } });
   document.getElementById('poly-redo')?.addEventListener('click', () => { if (redo()) { polySaveState(); polyRender(); } });
   document.getElementById('poly-reset')?.addEventListener('click', resetPlacements);
-  document.getElementById('poly-clear')?.addEventListener('click', () => { if (confirm('도면(구멍·글자)·선택한 피스·놓인 피스를 모두 지울까요? (되돌리기 가능)')) clearAll(); });
+  document.getElementById('poly-clear')?.addEventListener('click', () => { askConfirm('도면(구멍·글자)·선택한 피스·놓인 피스를 모두 지울까요? (되돌리기 가능)', { ok: '삭제' }).then(ok => { if (ok) clearAll(); }); });
 
   /* 선택 피스 도구 */
   document.getElementById('poly-sel-rotate')?.addEventListener('click', () => { if (polyUi.selectedId !== null) rotatePlacement(polyUi.selectedId); });

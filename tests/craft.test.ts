@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { splitPoly, area, reflectAcross, apply, compose, invert, det, rotateAbout, mirrorX, collinearOverlap, pointInPoly } from '../src/craft/geom';
+import { splitPoly, area, reflectAcross, apply, compose, invert, det, rotateAbout, mirrorX, collinearOverlap, pointInPoly, polysOverlap } from '../src/craft/geom';
 import type { Pt } from '../src/craft/geom';
-import { newDoc, cutSegment, cutPolyline, components, foldPiece, flipPiece, flipAll, isBack, layersAt, topFacetAt, snapPoints, sheetPoly, movePiece, rotatePiece, raisePiece, deletePiece, outlineEdges } from '../src/craft/model';
+import { newDoc, addSheet, removeSheet, sheetIds, stackOf, cutSegment, cutPolyline, components, foldPiece, flipPiece, flipAll, isBack, layersAt, topFacetAt, snapPoints, sheetPoly, movePiece, rotatePiece, raisePiece, deletePiece, outlineEdges } from '../src/craft/model';
 
 const near = (a: Pt, b: Pt) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-6;
 
@@ -49,6 +49,7 @@ describe('자르기와 조각', () => {
     expect(components(d2)).toHaveLength(1);      /* 아래쪽이 이어져 한 조각 */
     expect(d2.cuts).toHaveLength(1);
     expect(d2.cuts[0].b[1]).toBeCloseTo(1);
+    expect(d2.cuts[0].sheet).toBe(1);
   });
   it('닫힌 경로로 칸 하나를 오려내면 조각이 분리되고 삭제할 수 있다', () => {
     let d = newDoc(3, 3);
@@ -145,5 +146,58 @@ describe('뒤집기·층·스냅', () => {
     expect(outlineEdges(d)).toHaveLength(8);
     const d2 = foldPiece(newDoc(2, 1), [1], [1, -1], [1, 2], [1.5, 0.5], true);   /* 접힘선은 이어진 변 → 각 면 3변 */
     expect(outlineEdges(d2)).toHaveLength(6);
+  });
+});
+
+describe('여러 장', () => {
+  it('장을 추가하면 오른쪽에 놓이고 서로 다른 조각이다', () => {
+    const d = addSheet(newDoc(2, 1), 2, 3, 2, [3, 0]);
+    expect(sheetIds(d)).toEqual([1, 2]);
+    expect(components(d)).toHaveLength(2);
+    const f2 = d.facets.find(f => f.sheet === 2)!;
+    expect(near(sheetPoly(f2)[0], [0, 0])).toBe(true);   /* 장 2 의 종이 좌표는 자기 원점부터 */
+    expect(f2.poly.some(p => near(p, [3, 0]))).toBe(true);
+  });
+  it('겹쳐 놓아도 다른 장끼리는 이어지지 않고, 자르면 두 장 다 잘린다', () => {
+    let d = addSheet(newDoc(2, 1), 2, 2, 1, [0, 0]);   /* 같은 자리에 포개기 */
+    expect(components(d)).toHaveLength(2);
+    expect(layersAt(d, [0.5, 0.5]).map(l => l.facet.sheet)).toEqual([2, 1]);   /* 나중 장이 위 */
+    d = cutSegment(d, [1, -1], [1, 2]);
+    expect(d.facets).toHaveLength(4);
+    expect(components(d)).toHaveLength(4);
+    expect(d.cuts.map(c => c.sheet).sort()).toEqual([1, 2]);
+  });
+  it('접기는 누른 조각(장)만 접힌다 · 장 제거', () => {
+    let d = addSheet(newDoc(2, 1), 2, 2, 1, [0, 0]);
+    const top = topFacetAt(d, [1.5, 0.5])!;
+    d = foldPiece(d, [top.id], [1, -1], [1, 2], [1.5, 0.5], true);
+    expect(d.facets.filter(f => f.sheet === 2)).toHaveLength(2);
+    expect(d.facets.filter(f => f.sheet === 1)).toHaveLength(1);
+    expect(layersAt(d, [0.5, 0.5])).toHaveLength(3);
+    d = removeSheet(d, 2);
+    expect(sheetIds(d)).toEqual([1]);
+    expect(d.facets).toHaveLength(1);
+  });
+});
+
+describe('포개진 묶음', () => {
+  it('볼록 다각형 겹침: 변만 닿으면 겹치지 않음', () => {
+    const a: Pt[] = [[0, 0], [2, 0], [2, 2], [0, 2]];
+    expect(polysOverlap(a, [[1, 1], [3, 1], [3, 3], [1, 3]])).toBe(true);
+    expect(polysOverlap(a, [[2, 0], [4, 0], [4, 2], [2, 2]])).toBe(false);
+    expect(polysOverlap(a, [[2, 2], [3, 2], [3, 3]])).toBe(false);
+    expect(polysOverlap(a, [[0, 0], [2, 2], [0, 2]])).toBe(true);
+  });
+  it('포개진 종이만 묶이고, 통째로 뒤집으면 바닥 종이 뒷면이 맨 위로', () => {
+    let d = addSheet(addSheet(newDoc(2, 1), 2, 2, 1, [1, 0]), 3, 2, 1, [6, 0]);   /* 1·2 는 반쯤 포개짐, 3 은 따로 */
+    const stack = stackOf(d, [d.facets[0].id]);
+    expect(stack.sort()).toEqual([d.facets[0].id, d.facets[1].id].sort());
+    expect(layersAt(d, [1.5, 0.5]).map(l => l.facet.sheet)).toEqual([2, 1]);
+    d = flipPiece(d, stack);
+    /* 묶음 폭 0~3 의 중심 1.5 기준 반사 → 겹침 구간은 그대로 1~2 */
+    const layers = layersAt(d, [1.5, 0.5]);
+    expect(layers.map(l => l.facet.sheet)).toEqual([1, 2]);
+    expect(layers.every(l => l.back)).toBe(true);
+    expect(isBack(d.facets.find(f => f.sheet === 3)!)).toBe(false);   /* 따로 둔 종이는 그대로 */
   });
 });
