@@ -126,13 +126,16 @@ export function resize(w: number, h: number): void {
   polyState.w = nb.w; polyState.h = nb.h; polyState.holes = [...nb.holes]; polyState.letters = nb.letters;
   polySaveState(); polyRender();
 }
-export function setHole(x: number, y: number, on: boolean, batch = false): void {
+/** 구멍 토글. batch=true 면 되돌리기 스냅샷·전체 재렌더 없이 상태만 바꾼다 (드래그로 칠하는 동안 — 끝날 때 한 번 재렌더) */
+export function setHole(x: number, y: number, on: boolean, batch = false): boolean {
   const k = cellKey(x, y);
   const has = polyState.holes.includes(k);
-  if (has === on) return;
+  if (has === on) return false;
   if (!batch) pushUndo();
   polyState.holes = on ? [...polyState.holes, k] : polyState.holes.filter(h => h !== k);
-  polySaveState(); polyRender();
+  polySaveState();
+  if (!batch) polyRender();
+  return true;
 }
 export function setLetter(x: number, y: number, ch: string): void {
   const k = cellKey(x, y);
