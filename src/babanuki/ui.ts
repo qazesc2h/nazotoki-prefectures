@@ -1,5 +1,6 @@
 /* ババ抜き(바바누키) 탭 — 상태 · 렌더 · 이벤트 */
 import { esc, loadJSON, saveJSON } from '../shared/dom';
+import { askConfirm } from '../shared/dialog';
 import { splitWords } from '../shared/kana';
 import { babaCompute } from './model';
 import type { BabaOpts } from './model';
@@ -106,10 +107,12 @@ function babaRemoveWord(wi: number): void {
 }
 function babaClearAll(): void {
   if (babaState.words.length === 0) return;
-  if (!confirm('단어 목록을 모두 비우시겠습니까?')) return;
-  babaState.words = [];
-  babaSaveState();
-  babaRender();
+  askConfirm('단어 목록을 모두 비우시겠습니까?', { ok: '비우기' }).then(ok => {
+    if (!ok) return;
+    babaState.words = [];
+    babaSaveState();
+    babaRender();
+  });
 }
 
 export function babaInit(): void {

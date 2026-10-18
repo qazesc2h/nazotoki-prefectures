@@ -1,5 +1,6 @@
 /* しりとり(시리토리) 탭 — 상태 · 최장 체인 결과 · 방향 그래프(드래그) · 단어 목록 */
 import { svgEl, esc, loadJSON, saveJSON } from '../shared/dom';
+import { askConfirm } from '../shared/dialog';
 import { splitWords } from '../shared/kana';
 import { graphRemapPositions } from '../graph/layout';
 import { shiriBuildModel, shiriLongestChains } from './model';
@@ -430,11 +431,13 @@ function shiriRemoveWord(i: number): void {
 }
 function shiriClearAll(): void {
   if (shiriState.words.length === 0) return;
-  if (!confirm('단어 목록을 모두 비우시겠습니까?')) return;
-  shiriState.words = [];
-  shiriState.positions = {};
-  shiriSaveState();
-  shiriRender();
+  askConfirm('단어 목록을 모두 비우시겠습니까?', { ok: '비우기' }).then(ok => {
+    if (!ok) return;
+    shiriState.words = [];
+    shiriState.positions = {};
+    shiriSaveState();
+    shiriRender();
+  });
 }
 /* 드래그로 옮긴 위치를 모두 버리고 자동 배치로 되돌린다 */
 function shiriAutoArrange(): void {

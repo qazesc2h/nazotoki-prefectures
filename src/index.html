@@ -23,6 +23,7 @@
         <button data-view="babanuki">바바누키</button>
         <button data-view="shiritori">시리토리</button>
         <button data-view="polyomino">폴리오미노</button>
+        <button data-view="craft">공작</button>
       </div>
     </div>
     <div class="strike-status hidden" id="strikeStatus">
@@ -369,6 +370,122 @@
           </div>
           <div id="poly-custom-list"></div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-craft" class="hidden">
+    <div class="panel controls craft-top">
+      <div class="field">
+        <label>도구</label>
+        <div class="seg poly-seg" id="craft-tool" role="tablist" aria-label="도구">
+          <button type="button" data-tool="select" class="on" title="조각을 눌러 선택하고 끌어 옮깁니다">선택·이동</button>
+          <button type="button" data-tool="cut" title="점을 찍어 선을 긋고 자릅니다 (격자점·변 중점·칸 중심에 스냅)">✂ 자르기</button>
+          <button type="button" data-tool="fold" title="두 점으로 접는 선을 정하고, 넘어갈 쪽을 누릅니다">접기</button>
+          <button type="button" data-tool="text" title="칸을 눌러 글자를 적습니다 (앞·뒷면 모두)">글자</button>
+          <button type="button" data-tool="inspect" title="한 지점에 겹친 층을 위에서부터 보여줍니다">층 검사</button>
+        </div>
+      </div>
+      <button class="btn on" id="craft-fold-over" type="button" aria-pressed="true" title="접을 때 넘어간 쪽을 위(앞)로 올릴지, 아래(뒤)로 넣을지">넘어간 쪽: 위로</button>
+      <button class="btn on" id="craft-grid" type="button" aria-pressed="true" title="종이 위 격자선 표시">격자: 켬</button>
+      <button class="btn" id="craft-through" type="button" aria-pressed="false" title="아래 층이 비쳐 보이게 합니다 (透かして見る)">투시: 끔</button>
+      <button class="btn" id="craft-flip-all" type="button" title="종이 전체를 뒤집어 뒷면에서 봅니다 (裏返す, 되돌리기 가능)">⇄ 전체 뒤집기</button>
+      <div class="spacer"></div>
+      <div class="craft-zoom">
+        <button class="btn" id="craft-zoom-out" type="button" aria-label="축소">−</button>
+        <span class="hint" id="craft-zoom-label">56</span>
+        <button class="btn" id="craft-zoom-in" type="button" aria-label="확대">＋</button>
+        <button class="btn" id="craft-fit" type="button" title="작업대 원점을 종이 범위에 다시 맞춥니다 (왼쪽·위 여백 정리)">맞춤</button>
+      </div>
+      <button class="btn" id="craft-undo" type="button" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>
+      <button class="btn" id="craft-redo" type="button" title="다시 실행 (Ctrl+Y)">↷</button>
+      <button class="btn" id="craft-reset" type="button" title="자르기·접기·이동을 모두 지우고 평평한 종이로 (글자·사진은 유지)">처음으로</button>
+    </div>
+
+    <div id="craft-main">
+      <div id="craft-left">
+        <div class="panel" id="craft-stage-wrap">
+          <div class="poly-head">
+            <span class="count" id="craft-status"></span>
+            <span class="spacer"></span>
+            <span class="hint" id="craft-hint"></span>
+          </div>
+          <div class="craft-toolmsg hidden" id="craft-toolmsg" role="status"></div>
+          <div id="craft-stage">
+            <canvas id="craft-canvas" aria-label="작업대"></canvas>
+            <input type="text" id="craft-cell-input" class="hidden" maxlength="12" autocomplete="off" aria-label="칸 글자" />
+          </div>
+          <div id="craft-sel-tools" class="hidden">
+            <span class="count">선택한 조각:</span>
+            <button class="btn" id="craft-rot-ccw" type="button" title="왼쪽으로 90° (Shift+R)">↺ 90°</button>
+            <button class="btn" id="craft-rot-cw" type="button" title="오른쪽으로 90° (R)">↻ 90°</button>
+            <button class="btn" id="craft-rot-45" type="button" title="오른쪽으로 45°">↻ 45°</button>
+            <button class="btn" id="craft-sel-flip" type="button" title="이 조각만 제자리에서 뒤집습니다 (F)">⇄ 뒤집기</button>
+            <button class="btn" id="craft-sel-flip-stack" type="button" title="이 조각과 포개져 있는 조각들을 한 묶음으로 뒤집습니다 — 쌓인 순서가 통째로 반전됩니다 (Shift+F)">⇄ 겹친 것 함께</button>
+            <button class="btn" id="craft-sel-raise" type="button" title="다른 조각 위로 올립니다">⤒ 맨 위로</button>
+            <button class="btn" id="craft-sel-lower" type="button" title="다른 조각 아래로 넣습니다">⤓ 맨 아래로</button>
+            <button class="btn" id="craft-sel-stash" type="button" title="작업대에서 치워 보관함에 둡니다. 나중에 「꺼내기」로 다시 씁니다 (S)">보관함에</button>
+            <button class="btn" id="craft-sel-delete" type="button" title="조각을 없앱니다 (Delete, 되돌리기 가능)">삭제</button>
+            <button class="btn" id="craft-sel-clear" type="button" title="선택 해제 (Esc)">선택 해제</button>
+          </div>
+          <div id="craft-cut-tools" class="hidden">
+            <button class="btn" id="craft-cut-done" type="button">이 선으로 자르기 (엔터)</button>
+            <button class="btn" id="craft-cut-cancel" type="button">취소 (Esc)</button>
+          </div>
+        </div>
+        <details class="panel hidden" id="craft-stash-wrap" open>
+          <summary>보관함 <span id="craft-stash-count"></span> <span class="hint">치워 둔 자투리·파츠. 「꺼내기」로 작업대에 다시 놓습니다</span></summary>
+          <div class="craft-stash-bulk">
+            <button class="btn" id="craft-stash-all-out" type="button" title="보관함의 조각을 전부 작업대 오른쪽에 차례로 놓습니다 (되돌리기 가능)">모두 꺼내기</button>
+            <button class="btn" id="craft-stash-all-del" type="button" title="보관함을 비웁니다 (되돌리기 가능)">모두 삭제</button>
+          </div>
+          <div id="craft-stash"></div>
+        </details>
+        <div class="panel hidden" id="craft-inspect-wrap">
+          <div class="poly-head"><span class="count">층 검사 — 위에서부터</span></div>
+          <div id="craft-inspect"></div>
+        </div>
+        <details class="panel" id="craft-steps-wrap">
+          <summary>수행한 단계</summary>
+          <ol id="craft-steps"></ol>
+          <button class="btn" id="craft-steps-clear" type="button">목록 지우기</button>
+        </details>
+      </div>
+
+      <div class="panel" id="craft-right">
+        <div class="poly-head"><span class="count">종이</span><span class="spacer"></span><span class="hint">여러 장이면 번호로 골라 편집</span></div>
+        <div class="seg poly-seg craft-sheets" id="craft-sheets" role="tablist" aria-label="종이 목록"></div>
+        <div class="field">
+          <label for="craft-w">이 종이의 격자 (가로 × 세로, 1~30)</label>
+          <div class="craft-size-row">
+            <div class="poly-size">
+              <input type="text" inputmode="numeric" id="craft-w" maxlength="2" value="4" aria-label="가로" />
+              <span>×</span>
+              <input type="text" inputmode="numeric" id="craft-h" maxlength="2" value="3" aria-label="세로" />
+            </div>
+            <button class="btn" id="craft-sheet-remove" type="button" title="이 종이를 조각·글자·사진까지 지웁니다 (되돌리기 가능)">종이 삭제</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>종이 색 (장 구별용 — 뒷면은 같은 색의 탁한 톤)</label>
+          <div class="craft-colors" id="craft-colors"></div>
+        </div>
+        <div class="poly-head"><span class="count" id="craft-content-title">종이 내용</span></div>
+        <div class="seg poly-seg" id="craft-side" role="tablist" aria-label="면">
+          <button type="button" data-side="front" class="on">앞면</button>
+          <button type="button" data-side="back">뒷면</button>
+        </div>
+        <div class="field">
+          <label for="craft-photo">사진 (이 면 전체가 격자에 딱 맞게 찍은 것)</label>
+          <input type="file" id="craft-photo" accept="image/*" />
+          <div class="craft-photo-row"><span class="hint" id="craft-photo-info">사진 없음</span><button class="btn" id="craft-photo-clear" type="button">사진 지우기</button></div>
+        </div>
+        <div class="field">
+          <label for="craft-bulk">글자 일괄 입력 (줄 = 행, 공백·쉼표 = 칸, _ = 빈 칸)</label>
+          <textarea id="craft-bulk" rows="6" spellcheck="false"></textarea>
+          <div><button class="btn" id="craft-bulk-apply" type="button">적용</button></div>
+        </div>
+        <p class="hint">뒷면은 종이를 좌우로 뒤집어 본 모습(「전체 뒤집기」로 보이는 방향) 그대로 적습니다. 사진·글자는 이 브라우저에만 저장됩니다.</p>
       </div>
     </div>
   </section>

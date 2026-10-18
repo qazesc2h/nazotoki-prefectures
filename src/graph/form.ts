@@ -1,5 +1,6 @@
 /* 규칙 그래프 — 상단 폼: 단어 추가(텍스트/빈 칸) · 전체 삭제 */
 import { bindNumericInput } from '../shared/inputs';
+import { askConfirm, notify } from '../shared/dialog';
 import { graphValidateCharCount, graphAddWord, graphAddWordFromText } from './model';
 import { graphState, graphSaveState, graphResetContent } from './state';
 import { graphRender } from './render-hook';
@@ -17,7 +18,7 @@ export function graphInitForm(): void {
     addBtn.addEventListener('click', function() {
       const n = readCharCount();
       if (!graphValidateCharCount(n)) {
-        alert('글자 수는 1~12 사이의 정수를 입력하세요.');
+        notify('글자 수는 1~12 사이의 정수를 입력하세요.');
         return;
       }
       const newWords = graphAddWord(graphState.words, n);
@@ -36,7 +37,7 @@ export function graphInitForm(): void {
     const addByText = function() {
       const newWords = graphAddWordFromText(graphState.words, wordTextInput.value);
       if (!newWords) {
-        alert('단어는 1~12글자로 입력하세요.');
+        notify('단어는 1~12글자로 입력하세요.');
         return;
       }
       graphState.words = newWords;
@@ -52,11 +53,13 @@ export function graphInitForm(): void {
   if (clearBtn) {
     clearBtn.addEventListener('click', function() {
       if (!graphState.words.length) return;
-      if (!confirm('모든 단어와 규칙을 삭제하시겠습니까?')) return;
-      graphResetWordEdit();
-      graphResetContent();
-      graphSaveState();
-      graphRender();
+      askConfirm('모든 단어와 규칙을 삭제하시겠습니까?', { ok: '삭제' }).then(function(ok) {
+        if (!ok) return;
+        graphResetWordEdit();
+        graphResetContent();
+        graphSaveState();
+        graphRender();
+      });
     });
   }
 }
