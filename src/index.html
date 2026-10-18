@@ -354,7 +354,14 @@
         <label class="checkbox hidden" id="poly-cube-filter" title="접으면 정육면체가 되는 11종만 보입니다 (🎲 표시). 「이 크기 전부 1개씩」도 보이는 것만 적용"><input type="checkbox" id="poly-cube-only" /> 🎲 주사위 전개도만 (11종)</label>
         <div id="poly-picker"></div>
         <div id="poly-custom" class="hidden">
-          <p class="hint">칸을 눌러(끌어서) 피스를 그리고 「이 모양 저장」. 격자: <button class="btn" id="poly-custom-smaller" type="button">−</button> <b id="poly-custom-size">10</b>×<b id="poly-custom-size2">10</b> <button class="btn" id="poly-custom-larger" type="button">＋</button> (최대 20)</p>
+          <p class="hint">칸을 눌러(끌어서) 피스를 그리고 「이 모양 저장」을 누르세요.</p>
+          <div class="poly-grid-size">
+            <span class="hint">격자 크기</span>
+            <button class="btn" id="poly-custom-smaller" type="button" aria-label="격자 줄이기">−</button>
+            <b><span id="poly-custom-size">10</span> × <span id="poly-custom-size2">10</span></b>
+            <button class="btn" id="poly-custom-larger" type="button" aria-label="격자 늘리기">＋</button>
+            <span class="hint">(10~20)</span>
+          </div>
           <div id="poly-custom-grid"></div>
           <div class="poly-bulk">
             <button class="btn" id="poly-custom-save" type="button">이 모양 저장</button>
