@@ -7,7 +7,8 @@ import type { Side, Tool } from './state';
 import type { Layer } from './model';
 import { isBack } from './model';
 import { bbox } from './geom';
-import { photos, paperColor, PALETTE_HUES } from './render';
+import { photos, paperColor } from './render';
+import { PALETTE } from './palette';
 import { initCanvas, redrawCanvas, cancelTool, finishCut, hasPendingCut, overlay, fitView } from './canvas';
 import { setCraftRenderer, craftRender, craftUi, setTool, setFoldOver, setShowGrid, setShowBackThrough, setZoom, resize, resetSheet, isPristine, sheetIsPristine, pieceCount, setCurSheet, addNewSheet, removeCurrentSheet, sheetOfFacet, setSheetColor,
   nudge, rotateSelected, flipSelected, flipStackSelected, stashSelected, unstash, deleteStash, raiseSelected, lowerSelected, deleteSelected, doFlipAll, setCellText, setTextsBulk, textsToBulk, clearSteps, doUndo, doRedo } from './actions';
@@ -75,7 +76,7 @@ function renderAll(): void {
       + '<button type="button" data-add="1" title="현재 장과 같은 크기의 종이를 한 장 더 놓습니다">＋</button>';
   }
   const colors = el('craft-colors');
-  if (colors) colors.innerHTML = PALETTE_HUES.map((_, i) => '<button type="button" data-color="' + i + '" class="craft-swatch' + (i === cur.color ? ' on' : '') + '" style="background:' + paperColor(i, 'front', false) + ';border-color:' + paperColor(i, 'back', false) + '" aria-label="색 ' + (i + 1) + '"></button>').join('');
+  if (colors) colors.innerHTML = PALETTE.map((c, i) => '<button type="button" data-color="' + i + '" class="craft-swatch' + (i === cur.color ? ' on' : '') + '" style="background:' + paperColor(i, 'front', false) + ';border-color:' + paperColor(i, 'back', false) + '" title="' + c.name + '" aria-label="' + c.name + '"></button>').join('');
   const rm = el<HTMLButtonElement>('craft-sheet-remove'); if (rm) rm.textContent = craftState.sheets.length > 1 ? '종이 ' + cur.id + ' 삭제' : '종이 삭제';
   const sideTitle = el('craft-content-title'); if (sideTitle) sideTitle.textContent = (craftState.sheets.length > 1 ? '종이 ' + cur.id + ' ' : '종이 ') + '내용';
   document.querySelectorAll<HTMLButtonElement>('#craft-side button').forEach(b => b.classList.toggle('on', b.dataset.side === craftUi.textSide));

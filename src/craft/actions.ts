@@ -5,6 +5,7 @@ import { addSheet, removeSheet, cutPolyline, foldPiece, movePiece, rotatePiece, 
 import { applyPoly, compose, translate, bbox } from './geom';
 import type { Doc } from './model';
 import type { Pt } from './geom';
+import { PALETTE_SIZE } from './palette';
 
 let renderer: () => void = () => {};
 export function setCraftRenderer(fn: () => void): void { renderer = fn; }
@@ -62,9 +63,9 @@ export function addNewSheet(): void {
   const cur = currentSheet();
   const id = Math.max(0, ...craftState.sheets.map(s => s.id)) + 1;
   const used = new Set(craftState.sheets.map(s => s.color));
-  let color = 0; while (used.has(color) && color < 8) color++;   /* 아직 안 쓴 색 */
+  let color = 0; while (used.has(color) && color < PALETTE_SIZE) color++;   /* 아직 안 쓴 색 */
   pushUndo();
-  craftState.sheets.push(newSheet(id, cur.w, cur.h, color % 8));
+  craftState.sheets.push(newSheet(id, cur.w, cur.h, color % PALETTE_SIZE));
   craftState.doc = addSheet(craftState.doc, id, cur.w, cur.h, nextSheetSpot());
   craftState.curSheet = id;
   craftState.steps.push('종이 ' + id + ' 추가 (' + cur.w + '×' + cur.h + ')');

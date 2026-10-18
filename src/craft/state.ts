@@ -2,6 +2,7 @@
 import { loadJSON, saveJSON } from '../shared/dom';
 import { newDoc, cloneDoc } from './model';
 import type { Doc, Facet } from './model';
+import { PALETTE_SIZE } from './palette';
 
 const LS_CRAFT = 'nazotoki-craft-v2', LS_CRAFT_V1 = 'nazotoki-craft-v1';
 const DB_NAME = 'nazotoki-craft', DB_STORE = 'images';
@@ -31,7 +32,7 @@ export interface CraftState {
   steps: string[];          /* 수행한 단계 설명 (표시용) */
 }
 
-export function newSheet(id: number, w: number, h: number, color = (id - 1) % 8): Sheet { return { id, w, h, color, texts: { front: {}, back: {} }, photo: { front: null, back: null } }; }
+export function newSheet(id: number, w: number, h: number, color = (id - 1) % PALETTE_SIZE): Sheet { return { id, w, h, color, texts: { front: {}, back: {} }, photo: { front: null, back: null } }; }
 export const craftState: CraftState = {
   sheets: [newSheet(1, 4, 3)], stash: [], curSheet: 1, doc: newDoc(4, 3),
   tool: 'select', foldOver: true, showGrid: true, showBackThrough: false, zoom: 56, steps: [],
@@ -42,7 +43,7 @@ export function currentSheet(): Sheet { return sheetById(craftState.curSheet) ||
 const num = (v: unknown, d: number, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 function sanitizeSheet(raw: Partial<Sheet>, fallbackId: number): Sheet {
   const id = num(raw.id, fallbackId, 1, 1e9);
-  const s = newSheet(id, num(raw.w, 4, 1, 30), num(raw.h, 3, 1, 30), num(raw.color, (id - 1) % 8, 0, 7));
+  const s = newSheet(id, num(raw.w, 4, 1, 30), num(raw.h, 3, 1, 30), num(raw.color, (id - 1) % PALETTE_SIZE, 0, PALETTE_SIZE - 1));
   if (raw.texts && raw.texts.front && raw.texts.back) s.texts = raw.texts;
   if (raw.photo) s.photo = { front: raw.photo.front || null, back: raw.photo.back || null };
   return s;

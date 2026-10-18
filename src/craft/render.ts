@@ -6,6 +6,7 @@ import { docBounds, isBack, classifyEdges, snapPoints } from './model';
 import type { Doc } from './model';
 import { craftState, sheetById, photoKey } from './state';
 import type { Side, Sheet } from './state';
+import { PALETTE, paletteIndex } from './palette';
 
 export interface View { ox: number; oy: number; zoom: number; cssW: number; cssH: number; }
 export const MARGIN = 1;   /* 종이 둘레 여백 (칸) */
@@ -32,16 +33,15 @@ export interface Overlay {
 /** 사진 (메모리, 키 = "장id:면") — 저장은 state.ts 의 IndexedDB */
 export const photos: Record<string, HTMLImageElement | null> = {};
 
-/** 종이 색(장 구별용): 팔레트 색상환 번호 → 앞면은 옅은 색, 뒷면은 같은 색조의 탁한 색 */
-export const PALETTE_HUES = [48, 200, 340, 120, 275, 20, 165, 0];   /* 노랑·하늘·분홍·연두·보라·주황·청록·빨강 */
+/** 종이 색(장 구별용): 팔레트 번호 → 앞면은 옅은 색, 뒷면은 같은 색조의 탁한 색 */
 export function paperColor(colorIdx: number, side: Side, dark: boolean): string {
-  const h = PALETTE_HUES[((colorIdx % PALETTE_HUES.length) + PALETTE_HUES.length) % PALETTE_HUES.length];
-  if (side === 'front') return dark ? `hsl(${h} 45% 80%)` : `hsl(${h} 80% 94%)`;
-  return dark ? `hsl(${h} 14% 60%)` : `hsl(${h} 22% 80%)`;
+  const c = PALETTE[paletteIndex(colorIdx)];
+  if (side === 'front') return dark ? `hsl(${c.h} ${45 * c.s}% 80%)` : `hsl(${c.h} ${80 * c.s}% 94%)`;
+  return dark ? `hsl(${c.h} ${14 * c.s}% 60%)` : `hsl(${c.h} ${22 * c.s}% 80%)`;
 }
 export function paperEdgeColor(colorIdx: number, dark: boolean): string {
-  const h = PALETTE_HUES[((colorIdx % PALETTE_HUES.length) + PALETTE_HUES.length) % PALETTE_HUES.length];
-  return dark ? `hsl(${h} 45% 72%)` : `hsl(${h} 55% 32%)`;
+  const c = PALETTE[paletteIndex(colorIdx)];
+  return dark ? `hsl(${c.h} ${45 * c.s}% 72%)` : `hsl(${c.h} ${55 * c.s}% 32%)`;
 }
 function isDark(): boolean { return typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches; }
 
