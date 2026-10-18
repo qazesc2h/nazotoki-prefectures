@@ -418,3 +418,70 @@ svg.shiri-canvas { display: block; min-width: 100%; touch-action: pan-x pan-y; u
 .shiri-badge.iso { color: var(--muted); border: 1px solid var(--border); }
 .shiri-badge.cyc { color: #8b5cf6; border: 1px solid #8b5cf6; }
 .shiri-word .spacer { flex: 1 1 auto; }
+
+/* ========== 폴리오미노 탭 ========== */
+.poly-top .btn.on { background: var(--accent); color: #3a2a00; font-weight: 700; border-color: var(--accent); }
+@media (prefers-color-scheme: dark){ .poly-top .btn.on { color: #1a1205; } }
+.poly-size { display: flex; align-items: center; gap: 6px; }
+.poly-size input { width: 52px; font: inherit; font-size: 15px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); color: var(--text); text-align: center; }
+.poly-seg { padding: 2px; }
+.poly-seg button { padding: 5px 11px; font-size: 13px; }
+@media (max-width: 480px){ .poly-seg { position: static; display: inline-flex; flex-direction: row; min-width: 0; box-shadow: none; } .poly-seg button { width: auto; } }
+#poly-main { display: flex; gap: 12px; align-items: flex-start; }
+#poly-left { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+#poly-right { width: 300px; flex-shrink: 0; padding: 12px; }
+@media (max-width: 760px){ #poly-main { flex-direction: column; } #poly-right { width: 100%; } }
+.poly-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.poly-head .count { margin: 0; }
+#poly-board-wrap, #poly-tray-wrap, #poly-letters-wrap { padding: 12px; }
+#poly-board-stage { overflow: auto; }
+svg.poly-board { display: block; touch-action: none; user-select: none; -webkit-user-select: none; max-width: 100%; }
+.poly-cell { fill: var(--panel); stroke: var(--border); stroke-width: 1; }
+.poly-cell.hole { fill: var(--text); opacity: .85; }
+.poly-cell.overlap { fill: #ef4444; fill-opacity: .35; }
+svg.poly-board.mode-hole .poly-cell, svg.poly-board.mode-letter .poly-cell { cursor: pointer; }
+.poly-letter { font-family: var(--jp); fill: var(--text); font-weight: 700; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.poly-letter.hidden-by-piece { display: none; }
+.poly-piece { cursor: grab; }
+.poly-piece.dragging { cursor: grabbing; opacity: .9; }
+.poly-piece rect { stroke: none; }
+.poly-piece path.outline { fill: none; stroke: rgba(0,0,0,.55); stroke-width: 2.2; stroke-linejoin: round; }
+.poly-piece.sel path.outline { stroke: var(--accent); stroke-width: 3.5; }
+.poly-piece.conflict path.outline { stroke: #ef4444; stroke-width: 3; stroke-dasharray: 6 3; }
+.poly-piece text { font-family: var(--jp); font-weight: 700; fill: rgba(0,0,0,.75); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.poly-ghost { pointer-events: none; opacity: .65; }
+.poly-ghost.bad rect { fill: #ef4444 !important; }
+#poly-sel-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+#poly-sel-memo { width: 110px; font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); color: var(--text); }
+#poly-tray { display: flex; flex-wrap: wrap; gap: 8px; min-height: 40px; }
+#poly-tray .empty { padding: 10px; width: 100%; }
+.poly-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel-2); }
+.poly-card svg { display: block; }
+.poly-card .nm { font-size: 11px; color: var(--muted); font-weight: 700; }
+.poly-card .tray-shape { cursor: grab; touch-action: none; }
+.poly-card .ops { display: flex; gap: 3px; }
+.poly-card .ops .btn, .poly-card .cnt .btn { padding: 1px 6px; font-size: 12px; line-height: 1.4; }
+.poly-card .cnt { display: flex; align-items: center; gap: 3px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.poly-card .cnt b { min-width: 22px; text-align: center; }
+.poly-card.has { border-color: var(--accent); }
+.poly-card .inf { font-size: 11px; display: inline-flex; align-items: center; gap: 3px; color: var(--muted); cursor: pointer; }
+#poly-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.poly-bulk { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.poly-bulk .btn { font-size: 12px; padding: 4px 9px; }
+#poly-custom-grid { display: grid; gap: 1px; margin-top: 8px; touch-action: none; user-select: none; width: max-content; max-width: 100%; }
+#poly-custom-grid button { width: 100%; aspect-ratio: 1; min-width: 0; padding: 0; border: 1px solid var(--border); background: var(--panel); border-radius: 2px; cursor: pointer; }
+#poly-custom-grid button.on { background: var(--accent); border-color: var(--accent); }
+#poly-custom-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+#poly-letters { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+#poly-letters .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#poly-letters .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.3); flex-shrink: 0; }
+#poly-letters b { font-size: 16px; letter-spacing: .08em; }
+#poly-solve-wrap summary { cursor: pointer; font-size: 13px; color: var(--muted); padding: 9px 12px; user-select: none; }
+.poly-solve-body { padding: 2px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.poly-solve-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#poly-solve-label { font-variant-numeric: tabular-nums; font-size: 13px; }
+#poly-solve-thumbs { display: flex; flex-wrap: wrap; gap: 6px; }
+#poly-solve-thumbs .thumb { border: 2px solid var(--border); border-radius: 6px; padding: 3px; cursor: pointer; background: var(--panel-2); display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--muted); }
+#poly-solve-thumbs .thumb.on { border-color: var(--accent); }
+.poly-done { display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: #7a4d00; font-weight: 700; }
+@media (prefers-color-scheme: dark){ .poly-done { color: #f5c97a; } }

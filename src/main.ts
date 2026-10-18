@@ -7,9 +7,10 @@ import type { Mode } from './prefectures/data';
 import { graphInit, graphRender } from './graph/ui';
 import { babaInit, babaRender } from './babanuki/ui';
 import { shiriInit, shiriRender } from './shiritori/ui';
+import { polyInit, polyRender } from './polyomino/ui';
 
-type Tab = 'search' | 'all' | 'map' | 'shapes' | 'graph' | 'babanuki' | 'shiritori';
-const TOOL_VIEWS: Tab[] = ['graph', 'babanuki', 'shiritori'];   /* 상단 토글 레벨 도구 뷰 (콘텐츠 탭 줄 숨김) */
+type Tab = 'search' | 'all' | 'map' | 'shapes' | 'graph' | 'babanuki' | 'shiritori' | 'polyomino';
+const TOOL_VIEWS: Tab[] = ['graph', 'babanuki', 'shiritori', 'polyomino'];   /* 상단 토글 레벨 도구 뷰 (콘텐츠 탭 줄 숨김) */
 
 const app = { tab: 'search' as Tab };
 
@@ -19,7 +20,7 @@ const els = {
   resetStrike: $<HTMLButtonElement>('#resetStrike'),
   sections: {
     search: $('#tab-search'), all: $('#tab-all'), map: $('#tab-map'), shapes: $('#tab-shapes'),
-    graph: $('#tab-graph'), babanuki: $('#tab-babanuki'), shiritori: $('#tab-shiritori'),
+    graph: $('#tab-graph'), babanuki: $('#tab-babanuki'), shiritori: $('#tab-shiritori'), polyomino: $('#tab-polyomino'),
   } as Record<Tab, HTMLElement>,
 };
 
@@ -37,6 +38,7 @@ function renderActiveTab(): void {
   if (app.tab === 'graph') graphRender();
   else if (app.tab === 'babanuki') babaRender();
   else if (app.tab === 'shiritori') shiriRender();
+  else if (app.tab === 'polyomino') polyRender();
   else renderPrefTab(app.tab);
 }
 
@@ -60,6 +62,7 @@ function init(): void {
   graphInit();
   babaInit();
   shiriInit({ isActive: () => app.tab === 'shiritori' });
+  polyInit({ isActive: () => app.tab === 'polyomino' });
 
   els.modeSeg.addEventListener('click', e => {
     const b = (e.target as Element).closest<HTMLButtonElement>('button'); if (!b) return;
@@ -89,4 +92,5 @@ init();
 import { graphState } from './graph/state';
 import { graphSetCellType, graphCreateRule } from './graph/ui';
 import { graphFindLetter } from './graph/state';
-(window as unknown as { __nz: unknown }).__nz = { prefState, graphState, graphFindLetter, graphSetCellType, graphCreateRule };
+import { polyState } from './polyomino/state';
+(window as unknown as { __nz: unknown }).__nz = { prefState, graphState, graphFindLetter, graphSetCellType, graphCreateRule, polyState };
