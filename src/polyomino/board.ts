@@ -4,7 +4,7 @@ import { polyState, boardOf, pushUndo } from './state';
 import { computeCoverage, cellKey, isHole, inBoard, absCells } from './model';
 import { boardGeom, cellAtClient } from './geom';
 import { outlinePath, pieceColor } from './draw';
-import { polyUi, pieceByKey, setHole, setLetter, selectPlacement } from './actions';
+import { polyUi, pieceByKey, setHole, setLetter, selectPlacement, polyRender } from './actions';
 import { startDrag } from './drag';
 import { kataToHira } from '../shared/kana';
 
@@ -23,7 +23,7 @@ export function renderBoard(): void {
   const W = b.w * px + pad * 2, H = b.h * px + pad * 2;
 
   let svg = stage.querySelector<SVGSVGElement>('svg.poly-board');
-  if (!svg) { svg = document.createElementNS(NS, 'svg'); stage.appendChild(svg); }
+  if (!svg) { svg = document.createElementNS(NS, 'svg'); stage.appendChild(svg); attachBoardEvents(svg); }   /* 리스너는 한 번만 */
   svg.setAttribute('class', 'poly-board mode-' + polyState.editMode);
   svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
   svg.setAttribute('width', String(W)); svg.setAttribute('height', String(H));
@@ -102,16 +102,36 @@ export function renderBoard(): void {
   }
   svg.appendChild(lettersG);
 
-  /* 도면 자체의 포인터 처리: 구멍 칠하기 / 글자 입력 / 빈 곳 클릭 = 선택 해제 */
+  /* 글자 편집기가 열려 있으면 위치 갱신 */
+  if (letterCell) positionLetterEditor();
+}
+
+
+/** 도면 SVG 포인터 처리 (SVG 생성 시 한 번만 등록 — 재렌더마다 겹쳐 붙지 않도록):
+ *  구멍 칠하기(누르고 끌기, 끝날 때 한 번 재렌더) / 글자 입력 / 배치 모드에서 빈 곳 클릭 = 선택 해제 */
+function attachBoardEvents(svg: SVGSVGElement): void {
+  const paintCell = (x: number, y: number, on: boolean) => {
+    if (!setHole(x, y, on, true)) return;
+    const r = svg.querySelector<SVGRectElement>('.poly-cell[data-x="' + x + '"][data-y="' + y + '"]');
+    if (r) r.classList.toggle('hole', on);
+  };
+  const endPaint = (e?: PointerEvent) => {
+    if (!painting) return;
+    painting = null;
+    if (e && e.pointerId !== undefined) { try { svg.releasePointerCapture(e.pointerId); } catch (_) { /* 무시 */ } }
+    polyRender();   /* 커버리지·상태 줄 갱신 */
+  };
   svg.addEventListener('pointerdown', e => {
+    const b = boardOf();
     const c = cellAtClient(e.clientX, e.clientY);
     if (!c || !inBoard(b, c.x, c.y)) return;
     if (polyState.editMode === 'hole') {
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
       e.preventDefault();
       pushUndo();
-      painting = { on: !isHole(boardOf(), c.x, c.y) };
-      setHole(c.x, c.y, painting.on, true);
-      try { svg!.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ }
+      painting = { on: !isHole(b, c.x, c.y) };
+      paintCell(c.x, c.y, painting.on);
+      try { svg.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ }
     } else if (polyState.editMode === 'letter') {
       e.preventDefault();
       openLetterEditor(c.x, c.y);
@@ -122,14 +142,11 @@ export function renderBoard(): void {
   svg.addEventListener('pointermove', e => {
     if (!painting) return;
     const c = cellAtClient(e.clientX, e.clientY);
-    if (c && inBoard(boardOf(), c.x, c.y)) setHole(c.x, c.y, painting.on, true);
+    if (c && inBoard(boardOf(), c.x, c.y)) paintCell(c.x, c.y, painting.on);
   });
-  const endPaint = () => { painting = null; };
   svg.addEventListener('pointerup', endPaint);
   svg.addEventListener('pointercancel', endPaint);
-
-  /* 글자 편집기가 열려 있으면 위치 갱신 */
-  if (letterCell) positionLetterEditor();
+  svg.addEventListener('lostpointercapture', () => endPaint());
 }
 
 /* ---- 글자 입력 (떠 있는 한 글자 입력창, 규칙 그래프 셀 편집기와 같은 방식) ---- */
