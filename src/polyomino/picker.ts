@@ -65,8 +65,11 @@ function renderCustomEditor(): void {
   if (!grid || !list) return;
   const n = polyState.customGrid;
   if (sizeEl) sizeEl.textContent = String(n); if (sizeEl2) sizeEl2.textContent = String(n);
-  const cellPx = n <= 12 ? 22 : n <= 16 ? 17 : 14;
+  /* 패널 폭에 맞춰 칸 크기 결정 (최대 22px) — 20×20 도 패널을 넘지 않게 */
+  const avail = (grid.parentElement ? grid.parentElement.clientWidth : 0) || 276;
+  const cellPx = Math.max(8, Math.min(22, Math.floor((avail - (n - 1)) / n)));
   grid.style.gridTemplateColumns = 'repeat(' + n + ', ' + cellPx + 'px)';
+  grid.style.width = (cellPx * n + (n - 1)) + 'px';
   grid.innerHTML = '';
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
     const b = document.createElement('button'); b.type = 'button';

@@ -423,13 +423,15 @@ svg.shiri-canvas { display: block; min-width: 100%; touch-action: pan-x pan-y; u
 .poly-top .btn.on { background: var(--accent); color: #3a2a00; font-weight: 700; border-color: var(--accent); }
 @media (prefers-color-scheme: dark){ .poly-top .btn.on { color: #1a1205; } }
 .poly-size { display: flex; align-items: center; gap: 6px; }
-.poly-size input { width: 52px; font: inherit; font-size: 15px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); color: var(--text); text-align: center; }
-.poly-seg { padding: 2px; }
-.poly-seg button { padding: 5px 11px; font-size: 13px; }
-@media (max-width: 480px){ .poly-seg { position: static; display: inline-flex; flex-direction: row; min-width: 0; box-shadow: none; } .poly-seg button { width: auto; } }
+.poly-size input, .field .poly-size input[type=text] { width: 48px; min-width: 0; font: inherit; font-size: 15px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); color: var(--text); text-align: center; }
+/* 세그먼트는 패널 폭을 넘지 않도록 줄바꿈 허용 (알약 모양 대신 둥근 사각형) */
+.poly-seg { padding: 2px; flex-wrap: wrap; max-width: 100%; border-radius: 10px; }
+.poly-seg button { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
+@media (max-width: 480px){ .poly-seg { position: static; display: inline-flex; flex-direction: row; min-width: 0; box-shadow: none; } .poly-seg button { width: auto; text-align: center; } }
+#poly-size-tabs { width: 100%; justify-content: center; }
 #poly-main { display: flex; gap: 12px; align-items: flex-start; }
 #poly-left { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-#poly-right { width: 300px; flex-shrink: 0; padding: 12px; }
+#poly-right { width: 300px; flex-shrink: 0; padding: 12px; min-width: 0; overflow: hidden; }
 @media (max-width: 760px){ #poly-main { flex-direction: column; } #poly-right { width: 100%; } }
 .poly-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .poly-head .count { margin: 0; }
@@ -465,10 +467,12 @@ svg.poly-board.mode-hole .poly-cell, svg.poly-board.mode-letter .poly-cell { cur
 .poly-card .cnt b { min-width: 22px; text-align: center; }
 .poly-card.has { border-color: var(--accent); }
 .poly-card .inf { font-size: 11px; display: inline-flex; align-items: center; gap: 3px; color: var(--muted); cursor: pointer; }
-#poly-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+#poly-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; max-width: 100%; }
+.poly-card { max-width: 100%; }
+.poly-card svg { max-width: 100%; height: auto; }
 .poly-bulk { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .poly-bulk .btn { font-size: 12px; padding: 4px 9px; }
-#poly-custom-grid { display: grid; gap: 1px; margin-top: 8px; touch-action: none; user-select: none; width: max-content; max-width: 100%; }
+#poly-custom-grid { display: grid; gap: 1px; margin-top: 8px; touch-action: none; user-select: none; width: 100%; max-width: 100%; }
 #poly-custom-grid button { width: 100%; aspect-ratio: 1; min-width: 0; padding: 0; border: 1px solid var(--border); background: var(--panel); border-radius: 2px; cursor: pointer; }
 #poly-custom-grid button.on { background: var(--accent); border-color: var(--accent); }
 #poly-custom-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
