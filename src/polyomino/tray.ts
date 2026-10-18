@@ -1,8 +1,28 @@
 /* 폴리오미노 — 피스 트레이 (아직 놓지 않은 피스 카드: 모양·남은 개수·↻⇄, 끌어서 도면에 놓기) */
 import { polyState } from './state';
 import { shapeSvg, pieceColor } from './draw';
-import { catalog, remaining, trayShape, trayRotate, trayFlip } from './actions';
+import { catalog, remaining, trayShape, trayRotate, trayFlip, setEditMode } from './actions';
 import { startDrag } from './drag';
+
+let warnTimer: ReturnType<typeof setTimeout> | null = null;
+/** 배치 모드가 아닐 때 트레이를 끌려고 하면 잠시 경고 (전환 버튼 포함) */
+function showModeWarning(): void {
+  const el = document.getElementById('poly-mode-warn');
+  if (!el) return;
+  const label = polyState.editMode === 'hole' ? '구멍' : '글자';
+  el.innerHTML = '지금은 「도면 편집: ' + label + '」 모드라 피스를 놓을 수 없습니다. ';
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn'; btn.textContent = '배치 모드로';
+  btn.addEventListener('click', () => { hideModeWarning(); setEditMode('place'); });
+  el.appendChild(btn);
+  el.classList.remove('hidden');
+  if (warnTimer) clearTimeout(warnTimer);
+  warnTimer = setTimeout(hideModeWarning, 4000);
+}
+export function hideModeWarning(): void {
+  const el = document.getElementById('poly-mode-warn');
+  if (el) el.classList.add('hidden');
+  if (warnTimer) { clearTimeout(warnTimer); warnTimer = null; }
+}
 
 const CARD_PX = 14;
 
@@ -26,7 +46,7 @@ export function renderTray(): void {
     svg.setAttribute('role', 'button');
     svg.setAttribute('aria-label', p.name + ' (' + p.size + '칸) 남은 ' + (left === Infinity ? '무제한' : left + '개') + '. 끌어서 도면에 놓습니다');
     svg.addEventListener('pointerdown', e => {
-      if (polyState.editMode !== 'place') return;
+      if (polyState.editMode !== 'place') { e.preventDefault(); showModeWarning(); return; }
       e.preventDefault();
       const bb = svg.getBoundingClientRect();
       const vb = svg.viewBox.baseVal;

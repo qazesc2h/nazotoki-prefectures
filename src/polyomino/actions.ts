@@ -4,6 +4,7 @@ import { buildCatalog, findPiece, keyForShape, pieceOrientations } from './shape
 import type { CatalogPiece } from './shapes';
 import { computeCoverage, resizeBoard, cellKey, inBoard, isHole, rotateCW, flipH, normalize, shapeKey, orientations } from './model';
 import type { Placement, Shape, SymmetryOpts } from './model';
+import type { EditMode } from './state';
 
 /* ---- 재렌더 간접 호출 (ui.ts 가 등록) ---- */
 let renderer: () => void = () => {};
@@ -204,6 +205,15 @@ export function setAllowFlip(on: boolean): void {
 export function setAllowRotate(on: boolean): void { polyState.allowRotate = on; polyState.trayOrient = {}; polySaveState(); polyRender(); }
 export function setForbidOverlap(on: boolean): void { polyState.forbidOverlap = on; polySaveState(); polyRender(); }
 export function setCoverLetters(on: boolean): void { polyState.coverLetters = on; polySaveState(); polyRender(); }
+/** 도면 편집 모드. rerender=false 면 전체를 다시 그리지 않고 세그먼트·도면 클래스만 맞춘다 (드래그 도중 전환용) */
+export function setEditMode(mode: EditMode, rerender = true): void {
+  polyState.editMode = mode;
+  polySaveState();
+  if (rerender) { polyRender(); return; }
+  document.querySelectorAll<HTMLButtonElement>('#poly-edit-mode button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+  const svg = document.querySelector('svg.poly-board');
+  if (svg) svg.setAttribute('class', 'poly-board mode-' + mode);
+}
 
 /* ---- 자작 피스 ---- */
 export function addCustom(rows: string): number {

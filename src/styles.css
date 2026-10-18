@@ -490,5 +490,8 @@ svg.poly-board.mode-hole .poly-cell, svg.poly-board.mode-letter .poly-cell { cur
 #poly-solve-thumbs { display: flex; flex-wrap: wrap; gap: 6px; }
 #poly-solve-thumbs .thumb { border: 2px solid var(--border); border-radius: 6px; padding: 3px; cursor: pointer; background: var(--panel-2); display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--muted); }
 #poly-solve-thumbs .thumb.on { border-color: var(--accent); }
+.poly-warn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; padding: 7px 10px; border-radius: 8px; font-size: 13px; background: #ffe0e0; color: #b3261e; border: 1px solid #f5b5b0; }
+@media (prefers-color-scheme: dark){ .poly-warn { background: #4a1f1f; color: #ffb4ab; border-color: #7a3a36; } }
+.poly-warn .btn { font-size: 12px; padding: 3px 9px; }
 .poly-done { display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: #7a4d00; font-weight: 700; }
 @media (prefers-color-scheme: dark){ .poly-done { color: #f5c97a; } }
