@@ -1,6 +1,6 @@
 /* 폴리오미노 — 피스 카탈로그 (1~6칸 자유 폴리오미노 + 사용자 피스). 순수 모듈.
    표준 이름: 펜토미노 I U P F X N Y L Z T W V, 테트로미노 I O T S L, 트로미노 I L. 헥소미노는 번호. */
-import { normalize, shapeKey, canonicalKey, orientations, flipH, isChiral, FREE, ONE_SIDED, shapeFromRows } from './model';
+import { normalize, shapeKey, canonicalKey, orientations, flipH, isChiral, isCubeNet, FREE, ONE_SIDED, shapeFromRows } from './model';
 import type { Shape, SymmetryOpts } from './model';
 
 export interface CatalogPiece {
@@ -9,6 +9,7 @@ export interface CatalogPiece {
   size: number;     /* 칸 수 */
   shape: Shape;     /* 표시·초기 방향 */
   custom?: boolean;
+  cubeNet?: boolean;   /* 6칸: 정육면체 전개도 */
   colorIdx: number;
 }
 
@@ -59,7 +60,8 @@ export const BASE_CATALOG: CatalogPiece[] = (() => {
     let idx = 1;
     [...byKey.keys()].sort().forEach(key => {
       if (used.has(key)) return;
-      out.push({ key, name: n + '-' + (idx++), size: n, shape: byKey.get(key)!, colorIdx: color++ % PALETTE_SIZE });
+      const shape = byKey.get(key)!;
+      out.push({ key, name: n + '-' + (idx++), size: n, shape, cubeNet: n === 6 && isCubeNet(shape), colorIdx: color++ % PALETTE_SIZE });
     });
   }
   return out;

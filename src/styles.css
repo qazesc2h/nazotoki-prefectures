@@ -428,7 +428,10 @@ svg.shiri-canvas { display: block; min-width: 100%; touch-action: pan-x pan-y; u
 .poly-seg { padding: 2px; flex-wrap: wrap; max-width: 100%; border-radius: 10px; }
 .poly-seg button { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
 @media (max-width: 480px){ .poly-seg { position: static; display: inline-flex; flex-direction: row; min-width: 0; box-shadow: none; } .poly-seg button { width: auto; text-align: center; } }
-#poly-size-tabs { width: 100%; justify-content: center; }
+/* 크기 탭 7개는 항상 한 줄 — 버튼을 균등 분할하고 좁게 */
+#poly-size-tabs { width: 100%; flex-wrap: nowrap; }
+#poly-size-tabs button { flex: 1 1 0; min-width: 0; padding: 5px 2px; font-size: 12px; white-space: nowrap; text-align: center; }
+#poly-cube-filter { margin-top: 8px; font-size: 12.5px; }
 #poly-main { display: flex; gap: 12px; align-items: flex-start; }
 #poly-left { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 #poly-right { width: 300px; flex-shrink: 0; padding: 12px; min-width: 0; overflow: hidden; }

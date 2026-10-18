@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalize, shapeKey, shapeFromRows, orientations, canonicalKey, isChiral, isConnected, rotateCW, flipH, computeCoverage, isComplete, readLetters, resizeBoard, openCellCount, FREE, ONE_SIDED } from '../src/polyomino/model';
+import { normalize, shapeKey, shapeFromRows, orientations, canonicalKey, isChiral, isConnected, isCubeNet, rotateCW, flipH, computeCoverage, isComplete, readLetters, resizeBoard, openCellCount, FREE, ONE_SIDED } from '../src/polyomino/model';
 import type { Board, Placement } from '../src/polyomino/model';
 import { freePolyominoes, BASE_CATALOG, buildCatalog, keyForShape } from '../src/polyomino/shapes';
 import { solve } from '../src/polyomino/solver';
@@ -51,6 +51,17 @@ describe('카탈로그', () => {
     const S = free.find(p => p.size === 4 && p.name === 'S')!;
     expect(keyForShape(oneSided, S.shape, ONE_SIDED, S.key)).toBe(S.key + ':a');
     expect(keyForShape(oneSided, flipH(S.shape), ONE_SIDED, S.key)).toBe(S.key + ':b');
+  });
+  it('정육면체 전개도: 35종 중 11종, 십자형은 전개도·2×3·일자는 아님', () => {
+    expect(BASE_CATALOG.filter(p => p.size === 6 && p.cubeNet)).toHaveLength(11);
+    expect(isCubeNet(shapeFromRows('.#./###/.#./.#.'))).toBe(true);
+    expect(isCubeNet(shapeFromRows('#.../####/...#'))).toBe(true);    /* 계단형 */
+    expect(isCubeNet(shapeFromRows('###/###'))).toBe(false);
+    expect(isCubeNet(shapeFromRows('######'))).toBe(false);
+    expect(isCubeNet(shapeFromRows('#####'))).toBe(false);
+    /* 변형에 불변 */
+    const cross = shapeFromRows('.#./###/.#./.#.');
+    expect(isCubeNet(rotateCW(cross))).toBe(true); expect(isCubeNet(flipH(cross))).toBe(true);
   });
   it('자작 피스', () => {
     const cat = buildCatalog(FREE, [{ id: 7, rows: '#./##/.#' }]);

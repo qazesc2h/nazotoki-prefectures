@@ -22,6 +22,7 @@ export interface PolyState {
   nextPlacementId: number;
   trayOrient: Record<string, number>;   /* 트레이 카드의 현재 변형 인덱스 */
   sizeTab: number;                      /* 피스 선택 탭: 1~6칸, 0 = 자작 */
+  cubeNetsOnly: boolean;                /* 6칸 탭: 정육면체 전개도(11종)만 표시 */
   customGrid: number;                   /* 자작 피스 격자 크기 (10~20) */
 }
 
@@ -29,7 +30,7 @@ export const polyState: PolyState = {
   w: 6, h: 5, holes: [], letters: {}, editMode: 'place', coverLetters: false,
   allowRotate: true, allowFlip: true, forbidOverlap: false,
   counts: {}, customs: [], nextCustomId: 1, placements: [], nextPlacementId: 1,
-  trayOrient: {}, sizeTab: 5, customGrid: 10,
+  trayOrient: {}, sizeTab: 5, customGrid: 10, cubeNetsOnly: false,
 };
 
 /** 상태의 도면 뷰 (holes 를 Set 으로) */
@@ -45,7 +46,7 @@ export function polyLoadState(): void {
   if (Array.isArray(raw.holes)) polyState.holes = raw.holes.filter((k): k is string => typeof k === 'string');
   if (raw.letters && typeof raw.letters === 'object') polyState.letters = raw.letters;
   if (raw.editMode === 'hole' || raw.editMode === 'letter' || raw.editMode === 'place') polyState.editMode = raw.editMode;
-  (['coverLetters', 'allowRotate', 'allowFlip', 'forbidOverlap'] as const).forEach(k => { if (typeof raw[k] === 'boolean') polyState[k] = raw[k] as boolean; });
+  (['coverLetters', 'allowRotate', 'allowFlip', 'forbidOverlap', 'cubeNetsOnly'] as const).forEach(k => { if (typeof raw[k] === 'boolean') polyState[k] = raw[k] as boolean; });
   if (raw.counts && typeof raw.counts === 'object') {
     polyState.counts = {};
     for (const k of Object.keys(raw.counts)) { const v = raw.counts[k]; if (v === 'inf' || (typeof v === 'number' && v > 0)) polyState.counts[k] = v; }
