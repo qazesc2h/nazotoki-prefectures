@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { splitPoly, area, reflectAcross, apply, compose, invert, det, rotateAbout, mirrorX, collinearOverlap, pointInPoly, polysOverlap } from '../src/craft/geom';
 import type { Pt } from '../src/craft/geom';
-import { newDoc, addSheet, removeSheet, sheetIds, stackOf, cutSegment, cutPolyline, components, foldPiece, flipPiece, flipAll, isBack, layersAt, topFacetAt, snapPoints, sheetPoly, movePiece, rotatePiece, raisePiece, deletePiece, outlineEdges } from '../src/craft/model';
+import type { Doc } from '../src/craft/model';
+import { newDoc, addSheet, removeSheet, sheetIds, stackOf, pieceOf, cutSegment, cutPolyline, components, foldPiece, flipPiece, flipAll, isBack, layersAt, topFacetAt, snapPoints, sheetPoly, movePiece, rotatePiece, raisePiece, deletePiece, outlineEdges } from '../src/craft/model';
 
 const near = (a: Pt, b: Pt) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-6;
 
@@ -71,6 +72,28 @@ describe('자르기와 조각', () => {
     expect(Math.abs(area(sp))).toBeCloseTo(1);
     expect(sp.some(p => Math.abs(p[0] - 1) < 1e-6) && sp.some(p => Math.abs(p[0] - 2) < 1e-6)).toBe(true);
     expect(isBack(f)).toBe(false);
+  });
+});
+
+describe('이음새를 따라 자르기', () => {
+  it('키패드 3×4: 2·5 를 오려낸 뒤 4·7|5·8|6·9 사이를 끝까지 자르면 1,4 / 3,6 / 나머지 로 나뉜다', () => {
+    let d: Doc = addSheet({ facets: [], cuts: [], nextId: 1 }, 1, 3, 4, [10, 10]);
+    d = cutPolyline(d, [[11, 10], [11, 12], [12, 12], [12, 10]]);        /* 2·5 오려내기 (위쪽은 종이 끝) */
+    expect(components(d)).toHaveLength(2);
+    const base = pieceOf(d, topFacetAt(d, [10.5, 13.5])!.id);
+    d = movePiece(d, base, -2, 1);                                      /* 본체를 옮김 → 본체 (8,11)~(11,15) */
+    d = cutSegment(d, [8, 13], [11, 13]);                                /* 2행|3행 사이를 왼쪽 끝에서 오른쪽 끝까지 */
+    const comps = components(d);
+    expect(comps).toHaveLength(4);
+    const areas = comps.map(c => c.reduce((s, id) => s + Math.abs(area(d.facets.find(f => f.id === id)!.poly)), 0)).sort((x, y) => x - y);
+    expect(areas.map(x => Math.round(x))).toEqual([2, 2, 2, 6]);        /* 1,4 / 2,5 / 3,6 / 7~# */
+  });
+  it('이음새(앞선 자르기의 연장선)를 따라 자르면 그 구간이 끊어진다', () => {
+    let d = cutSegment(newDoc(2, 2), [1, -1], [1, 1]);   /* 위에서 절반까지 슬릿 → x=1 이음새가 y 1~2 에 남음 */
+    expect(components(d)).toHaveLength(1);
+    d = cutSegment(d, [1, 1], [1, 3]);                   /* 이음새를 따라 끝까지 */
+    expect(d.facets).toHaveLength(2);                    /* 면은 안 늘고 */
+    expect(components(d)).toHaveLength(2);               /* 조각은 갈린다 */
   });
 });
 

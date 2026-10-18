@@ -3,7 +3,7 @@
    그 장의 원래 좌표(격자 단위, 앞면 기준)→작업대 변환(xf)을 가진다. det(xf) < 0 이면 뒷면이 위를 향한 상태.
    자른 선(cuts)은 장별 종이 좌표로 기록하고, 같은 장의 면끼리 종이 좌표에서 변을 공유하면서 그 변이 잘리지 않았으면
    같은 조각(연결)으로 본다. 접기는 선 한쪽의 면을 반사하고 층(z)을 뒤집어 위/아래로 얹는 것. */
-import { apply, applyPoly, compose, det, invert, splitPoly, side, area, centroid, bbox, pointInPoly, distToSegment, collinearOverlap, reflectAcross, mirrorX, translate, rotateAbout, polysOverlap, EPS } from './geom';
+import { apply, applyPoly, compose, det, invert, splitPoly, side, area, centroid, bbox, pointInPoly, distToSegment, collinearOverlap, collinearOverlapSegment, reflectAcross, mirrorX, translate, rotateAbout, polysOverlap, EPS } from './geom';
 import type { Pt, Poly, Xf } from './geom';
 
 export interface Facet { id: number; sheet: number; poly: Poly; xf: Xf; z: number; }
@@ -133,6 +133,15 @@ export function cutSegment(doc: Doc, a: Pt, b: Pt, onlyFacetIds?: number[]): Doc
   const next: Facet[] = [];
   for (const f of out.facets) {
     if (onlyFacetIds && !onlyFacetIds.includes(f.id)) { next.push(f); continue; }
+    /* 선분이 면의 변 위를 지나는 구간도 자른 선으로 기록한다 — 앞선 자르기로 생긴(보이지 않는) 이음새를 따라 자르면
+       면은 더 갈리지 않지만 그 이음새는 끊어져야 하기 때문 */
+    {
+      const inv = invert(f.xf);
+      for (let i = 0; i < f.poly.length; i++) {
+        const ov = collinearOverlapSegment(a, b, f.poly[i], f.poly[(i + 1) % f.poly.length]);
+        if (ov) out.cuts.push({ sheet: f.sheet, a: apply(inv, ov[0]), b: apply(inv, ov[1]) });
+      }
+    }
     if (!segmentTouchesPoly(a, b, f.poly)) { next.push(f); continue; }
     const { left, right } = splitPoly(f.poly, a, b);
     if (!left.length || !right.length) { next.push(f); continue; }   /* 선이 면을 가르지 않음(가장자리만 스침) */

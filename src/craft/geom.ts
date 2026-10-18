@@ -105,6 +105,18 @@ export function distToSegment(p: Pt, a: Pt, b: Pt): { d: number; t: number; q: P
   const q: Pt = [a[0] + dx * t, a[1] + dy * t];
   return { d: dist(p, q), t, q };
 }
+/** 같은 직선 위의 두 선분이 겹치는 구간 (없으면 null) */
+export function collinearOverlapSegment(a: Pt, b: Pt, c: Pt, d: Pt): [Pt, Pt] | null {
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  const len = Math.hypot(dx, dy); if (len < EPS) return null;
+  const ux = dx / len, uy = dy / len;
+  const off = (p: Pt) => Math.abs((p[0] - a[0]) * uy - (p[1] - a[1]) * ux);
+  if (off(c) > 1e-6 || off(d) > 1e-6) return null;
+  const proj = (p: Pt) => (p[0] - a[0]) * ux + (p[1] - a[1]) * uy;
+  const lo = Math.max(0, Math.min(proj(c), proj(d))), hi = Math.min(len, Math.max(proj(c), proj(d)));
+  if (hi - lo < 1e-6) return null;
+  return [[a[0] + ux * lo, a[1] + uy * lo], [a[0] + ux * hi, a[1] + uy * hi]];
+}
 /** 두 선분이 겹치는 길이 (같은 직선 위에 있을 때만, 아니면 0) — 면 인접 판정용 */
 export function collinearOverlap(a: Pt, b: Pt, c: Pt, d: Pt): number {
   const dx = b[0] - a[0], dy = b[1] - a[1];
