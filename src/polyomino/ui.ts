@@ -1,6 +1,6 @@
 /* 폴리오미노 — 진입점: 전체 렌더 조립 + 상단 컨트롤·선택 피스 도구·키보드 초기화.
    세부는 board(도면) · tray(트레이) · picker(피스 선택/자작) · solve(답 탐색) · drag(드래그) · actions(상태 변경) 참고 */
-import { toAsciiDigits } from '../shared/kana';
+import { bindNumericInput } from '../shared/inputs';
 import { polyState, polyLoadState, polySaveState, boardOf, undo, redo, canUndo, canRedo } from './state';
 import { computeCoverage, isComplete, openCellCount, readLetters } from './model';
 import { setPolyRenderer, polyRender, polyUi, selectedArea, pieceByKey, resize, setAllowRotate, setAllowFlip, setForbidOverlap, setCoverLetters, resetPlacements, clearAll, rotatePlacement, flipPlacement, removePlacement, setMemo, selectPlacement, movePlacement, hasLetters } from './actions';
@@ -109,8 +109,10 @@ export function polyInit(opts: { isActive: () => boolean }): void {
 
   /* 도면 크기 */
   const wIn = document.getElementById('poly-w') as HTMLInputElement | null, hIn = document.getElementById('poly-h') as HTMLInputElement | null;
-  const applySize = () => { if (!wIn || !hIn) return; resize(parseInt(toAsciiDigits(wIn.value), 10) || polyState.w, parseInt(toAsciiDigits(hIn.value), 10) || polyState.h); wIn.value = String(polyState.w); hIn.value = String(polyState.h); };
-  [wIn, hIn].forEach(inp => { if (!inp) return; inp.addEventListener('change', applySize); inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applySize(); inp.blur(); } }); });
+  /* 숫자 입력 공용 동작: 전각 숫자 즉시 반각, 숫자만, change·엔터 때 1~20 으로 잘라 적용 */
+  const applySize = () => { if (!wIn || !hIn) return; resize(readW(), readH()); wIn.value = String(polyState.w); hIn.value = String(polyState.h); };
+  const readW = wIn ? bindNumericInput(wIn, { min: 1, max: 20, fallback: () => polyState.w, onCommit: applySize }) : () => polyState.w;
+  const readH = hIn ? bindNumericInput(hIn, { min: 1, max: 20, fallback: () => polyState.h, onCommit: applySize }) : () => polyState.h;
 
   /* 편집 모드 */
   document.getElementById('poly-edit-mode')?.addEventListener('click', e => {

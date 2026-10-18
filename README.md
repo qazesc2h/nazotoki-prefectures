@@ -51,6 +51,7 @@ src/
   main.ts               앱 셸 — 상단 도구 토글·콘텐츠 탭 전환, 각 도구 초기화
   shared/kana.ts        가나 정규화·작은 글자·탁점 표, 단어 분리 (모든 도구 공용)
   shared/dom.ts         DOM/SVG/localStorage 헬퍼
+  shared/inputs.ts      숫자 입력란 공용 동작 (전각 숫자 즉시 반각·숫자만·범위 자르기·엔터 확정) — 새 기능의 숫자 입력은 이걸 쓴다
   prefectures/data.ts   47 도도부현 데이터·모드별 필드·정렬·와일드카드 매처
   prefectures/ui.ts     검색 / 전체 보기 / 전체 지도 / 모양→이름 + 가리기 상태
   graph/model.ts        단어·칸·규칙 데이터 모델 (추가·삭제·단어 입력 모드) — 순수

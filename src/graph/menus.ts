@@ -1,5 +1,5 @@
 /* 규칙 그래프 — 규칙 종류 선택 메뉴(셀→셀 연결 후) · 셀 컨텍스트 메뉴(칸 타입) · 규칙 생성 */
-import { toAsciiDigits } from '../shared/kana';
+import { bindNumericInput } from '../shared/inputs';
 import type { Rule, RuleType, SeqOrder } from './model';
 import { graphState, graphFindLetter, graphSaveState } from './state';
 import { GRAPH_RULE_DEFS, cellTypeConvert } from './engine';
@@ -77,12 +77,12 @@ export function graphOpenRuleMenu(sourceCell: string, targetCell: string, client
   var stepInp = document.createElement('input');
   stepInp.type = 'text'; stepInp.inputMode = 'numeric'; stepInp.maxLength = 2; stepInp.value = '1';
   stepInp.style.cssText = 'width:46px; font:inherit; font-size:13px; padding:3px 5px; border:1px solid var(--border); border-radius:5px; background:var(--panel-2); color:var(--text)';
-  stepInp.addEventListener('input', function(){ var a = toAsciiDigits(stepInp.value).replace(/[^0-9]/g, ''); if (a !== stepInp.value) stepInp.value = a; });
+  var readStep = bindNumericInput(stepInp, { min: 1, max: 99, fallback: () => 1 });
   var addBtn = document.createElement('button');
   addBtn.type = 'button'; addBtn.textContent = '추가'; addBtn.className = 'btn';
   addBtn.style.cssText = 'flex:1; font-size:12px; padding:4px 6px';
   addBtn.addEventListener('click', function(){
-    var step = Math.max(1, parseInt(toAsciiDigits(stepInp.value), 10) || 1);
+    var step = readStep();
     graphCreateRule(sourceCell, targetCell, 'gojuon_next', { order: orderState.value, step: step });
     graphCloseRuleMenu();
   });

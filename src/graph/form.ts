@@ -1,5 +1,5 @@
 /* 규칙 그래프 — 상단 폼: 단어 추가(텍스트/빈 칸) · 전체 삭제 */
-import { toAsciiDigits } from '../shared/kana';
+import { bindNumericInput } from '../shared/inputs';
 import { graphValidateCharCount, graphAddWord, graphAddWordFromText } from './model';
 import { graphState, graphSaveState, graphResetContent } from './state';
 import { graphRender } from './render-hook';
@@ -10,17 +10,12 @@ export function graphInitForm(): void {
   const clearBtn = document.getElementById('graphClearAll');
   const charCountInput = document.getElementById('graphCharCount') as HTMLInputElement | null;
 
-  /* 전각 숫자 입력 시 즉시 반각으로 정규화 */
-  if (charCountInput) {
-    charCountInput.addEventListener('input', function() {
-      const a = toAsciiDigits(charCountInput.value).replace(/[^0-9]/g, '');
-      if (a !== charCountInput.value) charCountInput.value = a;
-    });
-  }
+  /* 숫자 입력 공용 동작 (전각 즉시 반각, 숫자만) */
+  const readCharCount = charCountInput ? bindNumericInput(charCountInput, { min: 1, max: 12, fallback: () => 5 }) : () => 5;
 
   if (addBtn && charCountInput) {
     addBtn.addEventListener('click', function() {
-      const n = parseInt(toAsciiDigits(charCountInput.value), 10);
+      const n = readCharCount();
       if (!graphValidateCharCount(n)) {
         alert('글자 수는 1~12 사이의 정수를 입력하세요.');
         return;
