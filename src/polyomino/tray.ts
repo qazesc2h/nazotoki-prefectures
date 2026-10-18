@@ -1,8 +1,9 @@
 /* 폴리오미노 — 피스 트레이 (아직 놓지 않은 피스 카드: 모양·남은 개수·↻⇄, 끌어서 도면에 놓기) */
 import { polyState } from './state';
 import { shapeSvg, pieceColor } from './draw';
-import { catalog, remaining, trayShape, trayRotate, trayFlip } from './actions';
+import { catalog, remaining, trayShape, trayRotate, trayFlip, setEditMode } from './actions';
 import { startDrag } from './drag';
+import { closeLetterEditor } from './board';
 
 const CARD_PX = 14;
 
@@ -26,7 +27,8 @@ export function renderTray(): void {
     svg.setAttribute('role', 'button');
     svg.setAttribute('aria-label', p.name + ' (' + p.size + '칸) 남은 ' + (left === Infinity ? '무제한' : left + '개') + '. 끌어서 도면에 놓습니다');
     svg.addEventListener('pointerdown', e => {
-      if (polyState.editMode !== 'place') return;
+      /* 구멍·글자 모드에서도 트레이에서 끌면 배치 모드로 바꿔서 놓을 수 있게 */
+      if (polyState.editMode !== 'place') { closeLetterEditor(); setEditMode('place', false); }
       e.preventDefault();
       const bb = svg.getBoundingClientRect();
       const vb = svg.viewBox.baseVal;

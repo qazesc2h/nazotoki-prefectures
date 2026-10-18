@@ -3,7 +3,7 @@
 import { bindNumericInput } from '../shared/inputs';
 import { polyState, polyLoadState, polySaveState, boardOf, undo, redo, canUndo, canRedo } from './state';
 import { computeCoverage, isComplete, openCellCount, readLetters } from './model';
-import { setPolyRenderer, polyRender, polyUi, selectedArea, pieceByKey, resize, setAllowRotate, setAllowFlip, setForbidOverlap, setCoverLetters, resetPlacements, clearAll, rotatePlacement, flipPlacement, removePlacement, setMemo, selectPlacement, movePlacement, hasLetters } from './actions';
+import { setPolyRenderer, polyRender, polyUi, selectedArea, pieceByKey, resize, setEditMode, setAllowRotate, setAllowFlip, setForbidOverlap, setCoverLetters, resetPlacements, clearAll, rotatePlacement, flipPlacement, removePlacement, setMemo, selectPlacement, movePlacement, hasLetters } from './actions';
 import { renderBoard, closeLetterEditor } from './board';
 import { renderTray } from './tray';
 import { renderPicker, initPicker } from './picker';
@@ -117,9 +117,9 @@ export function polyInit(opts: { isActive: () => boolean }): void {
   /* 편집 모드 */
   document.getElementById('poly-edit-mode')?.addEventListener('click', e => {
     const b = (e.target as Element).closest<HTMLButtonElement>('button[data-mode]'); if (!b) return;
-    polyState.editMode = b.dataset.mode as typeof polyState.editMode;
-    if (polyState.editMode !== 'letter') closeLetterEditor();
-    polySaveState(); polyRender();
+    const mode = b.dataset.mode as typeof polyState.editMode;
+    if (mode !== 'letter') closeLetterEditor();
+    setEditMode(mode);
   });
   document.getElementById('poly-opt-rotate')?.addEventListener('click', () => setAllowRotate(!polyState.allowRotate));
   document.getElementById('poly-opt-flip')?.addEventListener('click', () => setAllowFlip(!polyState.allowFlip));
