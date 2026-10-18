@@ -8,9 +8,10 @@ import { graphInit, graphRender } from './graph/ui';
 import { babaInit, babaRender } from './babanuki/ui';
 import { shiriInit, shiriRender } from './shiritori/ui';
 import { polyInit, polyRender } from './polyomino/ui';
+import { craftInit, craftRender } from './craft/ui';
 
-type Tab = 'search' | 'all' | 'map' | 'shapes' | 'graph' | 'babanuki' | 'shiritori' | 'polyomino';
-const TOOL_VIEWS: Tab[] = ['graph', 'babanuki', 'shiritori', 'polyomino'];   /* 상단 토글 레벨 도구 뷰 (콘텐츠 탭 줄 숨김) */
+type Tab = 'search' | 'all' | 'map' | 'shapes' | 'graph' | 'babanuki' | 'shiritori' | 'polyomino' | 'craft';
+const TOOL_VIEWS: Tab[] = ['graph', 'babanuki', 'shiritori', 'polyomino', 'craft'];   /* 상단 토글 레벨 도구 뷰 (콘텐츠 탭 줄 숨김) */
 
 const app = { tab: 'search' as Tab };
 
@@ -20,7 +21,7 @@ const els = {
   resetStrike: $<HTMLButtonElement>('#resetStrike'),
   sections: {
     search: $('#tab-search'), all: $('#tab-all'), map: $('#tab-map'), shapes: $('#tab-shapes'),
-    graph: $('#tab-graph'), babanuki: $('#tab-babanuki'), shiritori: $('#tab-shiritori'), polyomino: $('#tab-polyomino'),
+    graph: $('#tab-graph'), babanuki: $('#tab-babanuki'), shiritori: $('#tab-shiritori'), polyomino: $('#tab-polyomino'), craft: $('#tab-craft'),
   } as Record<Tab, HTMLElement>,
 };
 
@@ -39,6 +40,7 @@ function renderActiveTab(): void {
   else if (app.tab === 'babanuki') babaRender();
   else if (app.tab === 'shiritori') shiriRender();
   else if (app.tab === 'polyomino') polyRender();
+  else if (app.tab === 'craft') craftRender();
   else renderPrefTab(app.tab);
 }
 
@@ -63,6 +65,7 @@ function init(): void {
   babaInit();
   shiriInit({ isActive: () => app.tab === 'shiritori' });
   polyInit({ isActive: () => app.tab === 'polyomino' });
+  craftInit({ isActive: () => app.tab === 'craft' });
 
   els.modeSeg.addEventListener('click', e => {
     const b = (e.target as Element).closest<HTMLButtonElement>('button'); if (!b) return;
@@ -93,4 +96,7 @@ import { graphState } from './graph/state';
 import { graphSetCellType, graphCreateRule } from './graph/ui';
 import { graphFindLetter } from './graph/state';
 import { polyState } from './polyomino/state';
-(window as unknown as { __nz: unknown }).__nz = { prefState, graphState, graphFindLetter, graphSetCellType, graphCreateRule, polyState };
+import { craftState } from './craft/state';
+import { currentView as craftView } from './craft/canvas';
+import { toPx as craftToPx } from './craft/render';
+(window as unknown as { __nz: unknown }).__nz = { prefState, graphState, graphFindLetter, graphSetCellType, graphCreateRule, polyState, craftState, craftView, craftToPx };
