@@ -111,7 +111,7 @@ function renderStash(): void {
     box.appendChild(card);
   }
 }
-function drawThumb(cv: HTMLCanvasElement, facets: { poly: [number, number][]; xf: number[]; z: number }[]): void {
+function drawThumb(cv: HTMLCanvasElement, facets: { sheet: number; poly: [number, number][]; xf: number[]; z: number }[]): void {
   const ctx = cv.getContext('2d'); if (!ctx) return;
   const b = bbox(facets.map(f => f.poly));
   const w = Math.max(1e-6, b.maxX - b.minX), h = Math.max(1e-6, b.maxY - b.minY);
@@ -123,7 +123,8 @@ function drawThumb(cv: HTMLCanvasElement, facets: { poly: [number, number][]; xf
     ctx.beginPath();
     f.poly.forEach((p, i) => { const x = p[0] * sc + ox, y = p[1] * sc + oy; if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
     ctx.closePath();
-    ctx.fillStyle = back ? '#c9d0d6' : '#fff6cf'; ctx.fill();
+    const sh = sheetById(f.sheet);
+    ctx.fillStyle = paperColor(sh ? sh.color : 0, back ? 'back' : 'front', false); ctx.fill();
     ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.stroke();
   }
 }
