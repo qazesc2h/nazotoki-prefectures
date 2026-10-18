@@ -7,9 +7,9 @@ import type { Side, Tool } from './state';
 import type { Layer } from './model';
 import { isBack } from './model';
 import { bbox } from './geom';
-import { photos } from './render';
-import { initCanvas, redrawCanvas, cancelTool, finishCut, hasPendingCut, overlay } from './canvas';
-import { setCraftRenderer, craftRender, craftUi, setTool, setFoldOver, setShowGrid, setShowBackThrough, setZoom, resize, resetSheet, isPristine, sheetIsPristine, pieceCount, setCurSheet, addNewSheet, removeCurrentSheet, sheetOfFacet,
+import { photos, paperColor, PALETTE_HUES } from './render';
+import { initCanvas, redrawCanvas, cancelTool, finishCut, hasPendingCut, overlay, fitView } from './canvas';
+import { setCraftRenderer, craftRender, craftUi, setTool, setFoldOver, setShowGrid, setShowBackThrough, setZoom, resize, resetSheet, isPristine, sheetIsPristine, pieceCount, setCurSheet, addNewSheet, removeCurrentSheet, sheetOfFacet, setSheetColor,
   nudge, rotateSelected, flipSelected, flipStackSelected, stashSelected, unstash, deleteStash, raiseSelected, lowerSelected, deleteSelected, doFlipAll, setCellText, setTextsBulk, textsToBulk, clearSteps, doUndo, doRedo } from './actions';
 
 export { craftRender } from './actions';
@@ -74,6 +74,8 @@ function renderAll(): void {
     list.innerHTML = craftState.sheets.map(sh => '<button type="button" data-sheet="' + sh.id + '" class="' + (sh.id === cur.id ? 'on' : '') + '" title="' + sh.w + '×' + sh.h + '">종이 ' + sh.id + '</button>').join('')
       + '<button type="button" data-add="1" title="현재 장과 같은 크기의 종이를 한 장 더 놓습니다">＋</button>';
   }
+  const colors = el('craft-colors');
+  if (colors) colors.innerHTML = PALETTE_HUES.map((_, i) => '<button type="button" data-color="' + i + '" class="craft-swatch' + (i === cur.color ? ' on' : '') + '" style="background:' + paperColor(i, 'front', false) + ';border-color:' + paperColor(i, 'back', false) + '" aria-label="색 ' + (i + 1) + '"></button>').join('');
   const rm = el<HTMLButtonElement>('craft-sheet-remove'); if (rm) rm.textContent = craftState.sheets.length > 1 ? '종이 ' + cur.id + ' 삭제' : '종이 삭제';
   const sideTitle = el('craft-content-title'); if (sideTitle) sideTitle.textContent = (craftState.sheets.length > 1 ? '종이 ' + cur.id + ' ' : '종이 ') + '내용';
   document.querySelectorAll<HTMLButtonElement>('#craft-side button').forEach(b => b.classList.toggle('on', b.dataset.side === craftUi.textSide));
@@ -232,6 +234,10 @@ export function craftInit(opts: { isActive: () => boolean }): void {
     if (b.dataset.add) { addNewSheet(); return; }
     if (b.dataset.sheet) setCurSheet(Number(b.dataset.sheet));
   });
+  el('craft-colors')?.addEventListener('click', e => {
+    const b = (e.target as Element).closest<HTMLButtonElement>('button[data-color]'); if (!b) return;
+    setSheetColor(currentSheet().id, Number(b.dataset.color));
+  });
   el('craft-sheet-remove')?.addEventListener('click', () => {
     const cur = currentSheet();
     const msg = craftState.sheets.length > 1 ? '종이 ' + cur.id + '을(를) 조각·글자·사진까지 모두 지울까요? (되돌리기 가능)' : '마지막 한 장은 지울 수 없어 처음 상태로 되돌립니다. 계속할까요? (되돌리기 가능)';
@@ -248,11 +254,12 @@ export function craftInit(opts: { isActive: () => boolean }): void {
   el('craft-grid')?.addEventListener('click', () => setShowGrid(!craftState.showGrid));
   el('craft-through')?.addEventListener('click', () => setShowBackThrough(!craftState.showBackThrough));
   el('craft-flip-all')?.addEventListener('click', () => { cancelTool(); doFlipAll(); });
-  el('craft-zoom-out')?.addEventListener('click', () => setZoom(craftState.zoom - 8));
-  el('craft-zoom-in')?.addEventListener('click', () => setZoom(craftState.zoom + 8));
+  el('craft-zoom-out')?.addEventListener('click', () => { fitView(); setZoom(craftState.zoom - 8); });
+  el('craft-zoom-in')?.addEventListener('click', () => { fitView(); setZoom(craftState.zoom + 8); });
+  el('craft-fit')?.addEventListener('click', () => { fitView(); craftRender(); });
   el('craft-undo')?.addEventListener('click', () => { cancelTool(); doUndo(); });
   el('craft-redo')?.addEventListener('click', () => { cancelTool(); doRedo(); });
-  el('craft-reset')?.addEventListener('click', () => { askConfirm('자르기·접기·이동을 모두 지우고 평평한 종이로 되돌릴까요? (글자·사진은 유지, 되돌리기 가능)').then(ok => { if (ok) { cancelTool(); resetSheet(); } }); });
+  el('craft-reset')?.addEventListener('click', () => { askConfirm('자르기·접기·이동을 모두 지우고 평평한 종이로 되돌릴까요? (글자·사진은 유지, 되돌리기 가능)').then(ok => { if (ok) { cancelTool(); fitView(); resetSheet(); } }); });
 
   /* 선택 조각 도구 */
   el('craft-rot-ccw')?.addEventListener('click', () => rotateSelected(-90));

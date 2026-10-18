@@ -5,14 +5,17 @@ import { topFacetAt, pieceOf, movePiece, snapPoints, nearestSnap, isBack, layers
 import type { Doc, Layer } from './model';
 import { craftState, sheetById } from './state';
 import type { Side } from './state';
-import { drawCraft, fromPx, toPx } from './render';
+import { drawCraft, fromPx, toPx, computeView, MARGIN } from './render';
+import { docBounds } from './model';
 import type { Overlay, View } from './render';
 import { craftUi, doCut, doFold, commitMove, craftRender } from './actions';
 
 export const overlay: Overlay = { selected: new Set(), cutPts: [], foldPts: [], hover: null, snap: null, inspectPt: null, showSnaps: false };
 let canvas: HTMLCanvasElement | null = null;
 let view: View | null = null;
-let drag: { startDoc: Doc; start: Pt; ids: number[]; dx: number; dy: number; moved: boolean } | null = null;
+let drag: { startDoc: Doc; start: Pt; ids: number[]; dx: number; dy: number; moved: boolean; view: View; rect: { left: number; top: number } } | null = null;
+/* 원점은 한 번 넓어지면(왼쪽·위로) 줄이지 않는다 — 줄이면 화면이 밀려 끌던 조각이 튄다. fitView() 로만 다시 맞춘다 */
+let sticky: { ox: number; oy: number; zoom: number } | null = null;
 let raf = 0;
 const SNAP_R = 0.32;
 
@@ -34,17 +37,48 @@ export function initCanvas(el: HTMLCanvasElement, h: CanvasHooks): void {
   el.addEventListener('pointerleave', () => { overlay.hover = null; overlay.snap = null; scheduleDraw(); });
   el.addEventListener('dblclick', e => { e.preventDefault(); if (craftState.tool === 'cut') finishCut(); });
 }
+/** 원점을 다시 종이 범위에 맞춤 (확대 변경·처음으로·맞춤 버튼) */
+export function fitView(): void { sticky = null; }
+function nextView(): View {
+  const doc = craftState.doc;
+  const v = computeView(doc, craftState.zoom);
+  const stage = canvas ? canvas.parentElement : null;
+  if (sticky && sticky.zoom === v.zoom) { v.ox = Math.min(v.ox, sticky.ox); v.oy = Math.min(v.oy, sticky.oy); }
+  const b = docBounds(doc);
+  v.cssW = Math.max(v.zoom, Math.ceil((b.maxX + MARGIN - v.ox) * v.zoom));
+  v.cssH = Math.max(v.zoom, Math.ceil((b.maxY + MARGIN - v.oy) * v.zoom));
+  /* 캔버스는 작업대(스크롤 영역)보다 작지 않게 — 그래야 왼쪽·위로 넓어질 때 스크롤로 보정할 수 있다 */
+  if (stage) { v.cssW = Math.max(v.cssW, stage.clientWidth); v.cssH = Math.max(v.cssH, stage.clientHeight); }
+  sticky = { ox: v.ox, oy: v.oy, zoom: v.zoom };
+  return v;
+}
 export function redrawCanvas(): View | null {
   if (!canvas) return null;
   overlay.selected = new Set(craftUi.selected);
   overlay.showSnaps = craftState.tool === 'cut' || craftState.tool === 'fold';
-  view = drawCraft(canvas, overlay);
+  const prev = view;
+  const v = nextView();
+  view = drawCraft(canvas, overlay, v);
+  if (drag && prev && prev.zoom === v.zoom) {
+    /* 캔버스가 왼쪽·위로 자라면 캔버스 왼쪽 위가 화면에서 그만큼 이동한다 → 고정 좌표계의 기준점도 함께 옮긴다 */
+    drag.rect.left -= (prev.ox - v.ox) * v.zoom; drag.rect.top -= (prev.oy - v.oy) * v.zoom;
+    drag.view = { ...drag.view, ox: v.ox, oy: v.oy };
+  }
+  /* 원점이 왼쪽·위로 옮겨졌으면 그만큼 스크롤해 화면에 보이는 내용은 그대로 두기 */
+  const stage = canvas.parentElement;
+  if (stage && prev && prev.zoom === v.zoom) {
+    const dx = (prev.ox - v.ox) * v.zoom, dy = (prev.oy - v.oy) * v.zoom;
+    if (dx > 0.5) stage.scrollLeft += dx;
+    if (dy > 0.5) stage.scrollTop += dy;
+  }
   return view;
 }
 function scheduleDraw(): void { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; redrawCanvas(); }); }
 export function currentView(): View | null { return view; }
 export function workspacePt(e: PointerEvent | MouseEvent): Pt | null {
   if (!canvas || !view) return null;
+  /* 끄는 동안은 시작 시점의 좌표계를 고정해 쓴다 (캔버스가 넓어져도 포인터→작업대 대응이 흔들리지 않게) */
+  if (drag) return fromPx(drag.view, [e.clientX - drag.rect.left, e.clientY - drag.rect.top]);
   const r = canvas.getBoundingClientRect();
   return fromPx(view, [e.clientX - r.left, e.clientY - r.top]);
 }
@@ -78,7 +112,8 @@ function onDown(e: PointerEvent): void {
     if (!f) { craftUi.selected = []; craftRender(); return; }
     const ids = pieceOf(doc, f.id);
     craftUi.selected = ids;
-    drag = { startDoc: doc, start: wp, ids, dx: 0, dy: 0, moved: false };
+    const r0 = canvas.getBoundingClientRect();
+    drag = { startDoc: doc, start: wp, ids, dx: 0, dy: 0, moved: false, view: view!, rect: { left: r0.left, top: r0.top } };
     canvas.setPointerCapture(e.pointerId);
     craftRender();
     return;

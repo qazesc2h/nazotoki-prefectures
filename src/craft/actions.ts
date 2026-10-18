@@ -48,6 +48,7 @@ export function setFoldOver(v: boolean): void { craftState.foldOver = v; craftSa
 export function setShowGrid(v: boolean): void { craftState.showGrid = v; craftSaveState(); craftRender(); }
 export function setShowBackThrough(v: boolean): void { craftState.showBackThrough = v; craftSaveState(); craftRender(); }
 export function setZoom(z: number): void { craftState.zoom = Math.max(16, Math.min(160, z)); craftSaveState(); craftRender(); }
+export function setSheetColor(id: number, color: number): void { const sh = sheetById(id); if (!sh || sh.color === color) return; pushUndo(); sh.color = color; craftSaveState(); craftRender(); }
 export function setCurSheet(id: number): void { if (sheetById(id)) { craftState.curSheet = id; craftSaveState(); craftRender(); } }
 
 /** 새 장을 놓을 자리: 지금 있는 종이들의 오른쪽 */
@@ -60,8 +61,10 @@ function nextSheetSpot(): Pt {
 export function addNewSheet(): void {
   const cur = currentSheet();
   const id = Math.max(0, ...craftState.sheets.map(s => s.id)) + 1;
+  const used = new Set(craftState.sheets.map(s => s.color));
+  let color = 0; while (used.has(color) && color < 8) color++;   /* 아직 안 쓴 색 */
   pushUndo();
-  craftState.sheets.push(newSheet(id, cur.w, cur.h));
+  craftState.sheets.push(newSheet(id, cur.w, cur.h, color % 8));
   craftState.doc = addSheet(craftState.doc, id, cur.w, cur.h, nextSheetSpot());
   craftState.curSheet = id;
   craftState.steps.push('종이 ' + id + ' 추가 (' + cur.w + '×' + cur.h + ')');

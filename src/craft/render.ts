@@ -32,8 +32,17 @@ export interface Overlay {
 /** 사진 (메모리, 키 = "장id:면") — 저장은 state.ts 의 IndexedDB */
 export const photos: Record<string, HTMLImageElement | null> = {};
 
-const PAPER = { front: '#fffdf4', back: '#e3e7ea' };
-const PAPER_DARK = { front: '#f3efe0', back: '#9aa3aa' };
+/** 종이 색(장 구별용): 팔레트 색상환 번호 → 앞면은 옅은 색, 뒷면은 같은 색조의 탁한 색 */
+export const PALETTE_HUES = [48, 200, 340, 120, 275, 20, 165, 0];   /* 노랑·하늘·분홍·연두·보라·주황·청록·빨강 */
+export function paperColor(colorIdx: number, side: Side, dark: boolean): string {
+  const h = PALETTE_HUES[((colorIdx % PALETTE_HUES.length) + PALETTE_HUES.length) % PALETTE_HUES.length];
+  if (side === 'front') return dark ? `hsl(${h} 45% 80%)` : `hsl(${h} 80% 94%)`;
+  return dark ? `hsl(${h} 14% 60%)` : `hsl(${h} 22% 80%)`;
+}
+export function paperEdgeColor(colorIdx: number, dark: boolean): string {
+  const h = PALETTE_HUES[((colorIdx % PALETTE_HUES.length) + PALETTE_HUES.length) % PALETTE_HUES.length];
+  return dark ? `hsl(${h} 45% 72%)` : `hsl(${h} 55% 32%)`;
+}
 function isDark(): boolean { return typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches; }
 
 function cellTextsOf(sheet: Sheet, side: Side): [number, number, string][] {
@@ -43,9 +52,8 @@ function cellTextsOf(sheet: Sheet, side: Side): [number, number, string][] {
   return out;
 }
 
-export function drawCraft(canvas: HTMLCanvasElement, ov: Overlay): View {
+export function drawCraft(canvas: HTMLCanvasElement, ov: Overlay, v: View): View {
   const doc = craftState.doc;
-  const v = computeView(doc, craftState.zoom);
   const dpr = Math.min(3, window.devicePixelRatio || 1);
   if (canvas.width !== Math.round(v.cssW * dpr) || canvas.height !== Math.round(v.cssH * dpr)) { canvas.width = Math.round(v.cssW * dpr); canvas.height = Math.round(v.cssH * dpr); }
   canvas.style.width = v.cssW + 'px'; canvas.style.height = v.cssH + 'px';
@@ -57,7 +65,6 @@ export function drawCraft(canvas: HTMLCanvasElement, ov: Overlay): View {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   setXf([1, 0, 0, 1, 0, 0]);
   const dark = isDark();
-  const paper = dark ? PAPER_DARK : PAPER;
   const multi = craftState.sheets.length > 1;
   const facets = doc.facets.slice().sort((a, b) => a.z - b.z);
   const { outline, crease } = classifyEdges(doc);
@@ -77,7 +84,7 @@ export function drawCraft(canvas: HTMLCanvasElement, ov: Overlay): View {
     pathPoly(f.poly);
     ctx.clip();
     /* 종이색 */
-    ctx.fillStyle = paper[side];
+    ctx.fillStyle = paperColor(sheet.color, side, dark);
     ctx.fill();
     /* 사진: 이미지 px → 종이 좌표 → 작업대 → 화면 */
     const img = photos[photoKey(f.sheet, side)];
@@ -130,7 +137,7 @@ export function drawCraft(canvas: HTMLCanvasElement, ov: Overlay): View {
         setXf([1, 0, 0, 1, 0, 0]);
         const rr = Math.max(7, v.zoom * 0.17);
         ctx.beginPath(); ctx.arc(q[0], q[1], rr, 0, Math.PI * 2);
-        ctx.fillStyle = back ? 'rgba(40,50,70,.75)' : 'rgba(120,80,0,.75)'; ctx.fill();
+        ctx.fillStyle = paperEdgeColor(sheet.color, dark); ctx.fill();
         ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.round(rr * 1.3) + 'px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(String(f.sheet), q[0], q[1] + 0.5);
       }
@@ -140,7 +147,7 @@ export function drawCraft(canvas: HTMLCanvasElement, ov: Overlay): View {
     setXf([1, 0, 0, 1, 0, 0]);
     ctx.lineCap = 'round';
     const o = outline.get(f.id) || [];
-    ctx.strokeStyle = dark ? '#cfd6cf' : '#333'; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+    ctx.strokeStyle = multi ? paperEdgeColor(sheet.color, dark) : (dark ? '#cfd6cf' : '#333'); ctx.lineWidth = 1.5; ctx.setLineDash([]);
     ctx.beginPath(); for (const [p, q] of o) { const a = toPx(v, p), b = toPx(v, q); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); } ctx.stroke();
     const cr = crease.get(f.id) || [];
     if (cr.length) {

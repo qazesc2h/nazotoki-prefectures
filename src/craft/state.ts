@@ -12,6 +12,7 @@ export interface PhotoCal { w: number; h: number; }   /* 사진 픽셀 크기 (�
 /** 종이 한 장의 내용 (모양·위치는 doc 의 면들이 가짐) */
 export interface Sheet {
   id: number; w: number; h: number;
+  color: number;                                 /* 종이 색 (팔레트 번호, 장 구별용) */
   texts: Record<Side, Record<string, string>>;   /* "r,c" → 글자. 뒷면은 종이를 좌우로 뒤집어 본 좌표 */
   photo: Record<Side, PhotoCal | null>;
 }
@@ -30,7 +31,7 @@ export interface CraftState {
   steps: string[];          /* 수행한 단계 설명 (표시용) */
 }
 
-export function newSheet(id: number, w: number, h: number): Sheet { return { id, w, h, texts: { front: {}, back: {} }, photo: { front: null, back: null } }; }
+export function newSheet(id: number, w: number, h: number, color = (id - 1) % 8): Sheet { return { id, w, h, color, texts: { front: {}, back: {} }, photo: { front: null, back: null } }; }
 export const craftState: CraftState = {
   sheets: [newSheet(1, 4, 3)], stash: [], curSheet: 1, doc: newDoc(4, 3),
   tool: 'select', foldOver: true, showGrid: true, showBackThrough: false, zoom: 56, steps: [],
@@ -40,7 +41,8 @@ export function currentSheet(): Sheet { return sheetById(craftState.curSheet) ||
 
 const num = (v: unknown, d: number, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 function sanitizeSheet(raw: Partial<Sheet>, fallbackId: number): Sheet {
-  const s = newSheet(num(raw.id, fallbackId, 1, 1e9), num(raw.w, 4, 1, 30), num(raw.h, 3, 1, 30));
+  const id = num(raw.id, fallbackId, 1, 1e9);
+  const s = newSheet(id, num(raw.w, 4, 1, 30), num(raw.h, 3, 1, 30), num(raw.color, (id - 1) % 8, 0, 7));
   if (raw.texts && raw.texts.front && raw.texts.back) s.texts = raw.texts;
   if (raw.photo) s.photo = { front: raw.photo.front || null, back: raw.photo.back || null };
   return s;

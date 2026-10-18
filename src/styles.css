@@ -510,7 +510,7 @@ svg.poly-board.mode-hole .poly-cell, svg.poly-board.mode-letter .poly-cell { cur
 @media (max-width: 760px){ #craft-main { flex-direction: column; } #craft-left, #craft-right { width: 100%; flex: 0 0 auto; } }
 #craft-stage-wrap { max-width: 100%; }
 #craft-stage-wrap, #craft-inspect-wrap { padding: 12px; }
-#craft-stage { position: relative; overflow: auto; max-height: 72vh; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; }
+#craft-stage { position: relative; overflow: auto; height: 60vh; min-height: 240px; max-height: 90vh; resize: vertical; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; }
 #craft-canvas { display: block; cursor: crosshair; }
 #craft-cell-input { position: absolute; z-index: 2; height: 28px; padding: 2px 4px; font: inherit; font-size: 14px; text-align: center; border: 2px solid var(--accent); border-radius: 6px; background: var(--panel); color: var(--text); }
 #craft-sel-tools, #craft-cut-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
@@ -549,3 +549,6 @@ svg.poly-board.mode-hole .poly-cell, svg.poly-board.mode-letter .poly-cell { cur
 .craft-stash-info { font-size: 12px; }
 .craft-stash-btns { display: flex; gap: 4px; }
 .craft-stash-btns .btn { flex: 1 1 0; font-size: 12px; padding: 3px 6px; }
+.craft-colors { display: flex; gap: 6px; flex-wrap: wrap; }
+.craft-swatch { width: 26px; height: 26px; border-radius: 50%; border: 3px solid; cursor: pointer; padding: 0; box-sizing: border-box; }
+.craft-swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }

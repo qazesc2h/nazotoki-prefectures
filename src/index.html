@@ -395,6 +395,7 @@
         <button class="btn" id="craft-zoom-out" type="button" aria-label="축소">−</button>
         <span class="hint" id="craft-zoom-label">56</span>
         <button class="btn" id="craft-zoom-in" type="button" aria-label="확대">＋</button>
+        <button class="btn" id="craft-fit" type="button" title="작업대 원점을 종이 범위에 다시 맞춥니다 (왼쪽·위 여백 정리)">맞춤</button>
       </div>
       <button class="btn" id="craft-undo" type="button" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>
       <button class="btn" id="craft-redo" type="button" title="다시 실행 (Ctrl+Y)">↷</button>
@@ -460,6 +461,10 @@
             </div>
             <button class="btn" id="craft-sheet-remove" type="button" title="이 종이를 조각·글자·사진까지 지웁니다 (되돌리기 가능)">종이 삭제</button>
           </div>
+        </div>
+        <div class="field">
+          <label>종이 색 (장 구별용 — 뒷면은 같은 색의 탁한 톤)</label>
+          <div class="craft-colors" id="craft-colors"></div>
         </div>
         <div class="poly-head"><span class="count" id="craft-content-title">종이 내용</span></div>
         <div class="seg poly-seg" id="craft-side" role="tablist" aria-label="면">
