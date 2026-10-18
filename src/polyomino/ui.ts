@@ -5,7 +5,7 @@ import { polyState, polyLoadState, polySaveState, boardOf, undo, redo, canUndo, 
 import { computeCoverage, isComplete, openCellCount, readLetters } from './model';
 import { setPolyRenderer, polyRender, polyUi, selectedArea, pieceByKey, resize, setEditMode, setAllowRotate, setAllowFlip, setForbidOverlap, setCoverLetters, resetPlacements, clearAll, rotatePlacement, flipPlacement, removePlacement, setMemo, selectPlacement, movePlacement, hasLetters } from './actions';
 import { renderBoard, closeLetterEditor } from './board';
-import { renderTray } from './tray';
+import { renderTray, hideModeWarning } from './tray';
 import { renderPicker, initPicker } from './picker';
 import { initSolve, invalidateSolve } from './solve';
 import { pieceColor } from './draw';
@@ -119,6 +119,7 @@ export function polyInit(opts: { isActive: () => boolean }): void {
     const b = (e.target as Element).closest<HTMLButtonElement>('button[data-mode]'); if (!b) return;
     const mode = b.dataset.mode as typeof polyState.editMode;
     if (mode !== 'letter') closeLetterEditor();
+    hideModeWarning();
     setEditMode(mode);
   });
   document.getElementById('poly-opt-rotate')?.addEventListener('click', () => setAllowRotate(!polyState.allowRotate));
