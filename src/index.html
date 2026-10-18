@@ -22,6 +22,7 @@
         <button data-view="graph">규칙 그래프</button>
         <button data-view="babanuki">바바누키</button>
         <button data-view="shiritori">시리토리</button>
+        <button data-view="polyomino">폴리오미노</button>
       </div>
     </div>
     <div class="strike-status hidden" id="strikeStatus">
@@ -262,6 +263,105 @@
       <button class="btn" id="shiri-clear" type="button">목록 비우기</button>
     </div>
     <div class="panel" id="shiri-list"></div>
+  </section>
+
+  <!-- POLYOMINO TAB -->
+  <section id="tab-polyomino" class="hidden">
+    <div class="panel controls poly-top">
+      <div class="field">
+        <label for="poly-w">도면 크기 (가로 × 세로, 1~20)</label>
+        <div class="poly-size">
+          <input type="text" inputmode="numeric" id="poly-w" maxlength="2" value="6" aria-label="가로" />
+          <span>×</span>
+          <input type="text" inputmode="numeric" id="poly-h" maxlength="2" value="5" aria-label="세로" />
+        </div>
+      </div>
+      <div class="field">
+        <label>도면 편집</label>
+        <div class="seg poly-seg" id="poly-edit-mode" role="tablist" aria-label="도면 편집 모드">
+          <button type="button" data-mode="place" class="on" title="피스를 끌어다 놓고 옮깁니다">배치</button>
+          <button type="button" data-mode="hole" title="칸을 눌러 사용하지 않는 칸(구멍)을 칠합니다. 드래그로 여러 칸">구멍</button>
+          <button type="button" data-mode="letter" title="칸을 눌러 글자를 넣습니다. 엔터·→ 로 다음 칸">글자</button>
+        </div>
+      </div>
+      <button class="btn on" id="poly-opt-rotate" type="button" aria-pressed="true" title="피스를 90°씩 돌릴 수 있게 합니다">회전 허용: 켬</button>
+      <button class="btn on" id="poly-opt-flip" type="button" aria-pressed="true" title="피스를 뒤집을 수 있게 합니다. 끄면 거울상 피스가 별개 카드로 나뉩니다">뒤집기 허용: 켬</button>
+      <button class="btn" id="poly-opt-overlap" type="button" aria-pressed="false" title="켜면 겹치거나 구멍·도면 밖에 걸치는 자리에는 놓을 수 없습니다">겹침 금지: 끔</button>
+      <button class="btn" id="poly-opt-cover" type="button" aria-pressed="false" title="켜면 피스가 덮은 글자를 숨깁니다 (기본은 피스를 반투명하게 그려 글자가 비침)">피스로 글자 가리기: 끔</button>
+      <div class="spacer"></div>
+      <button class="btn" id="poly-undo" type="button" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>
+      <button class="btn" id="poly-redo" type="button" title="다시 실행 (Ctrl+Y)">↷</button>
+      <button class="btn" id="poly-reset" type="button" title="놓은 피스를 전부 트레이로 되돌립니다">전부 되돌리기</button>
+      <button class="btn" id="poly-clear" type="button">전체 삭제</button>
+    </div>
+
+    <div id="poly-main">
+      <div id="poly-left">
+        <div class="panel" id="poly-board-wrap">
+          <div class="poly-head">
+            <span class="count" id="poly-status"></span>
+            <span class="spacer"></span>
+            <span class="hint" id="poly-hint">트레이의 피스를 도면으로 끌어다 놓으세요. 놓인 피스를 누르면 선택, 끌면 이동, 도면 밖으로 끌면 트레이로 돌아갑니다.</span>
+          </div>
+          <div id="poly-board-stage"></div>
+          <div id="poly-sel-tools" class="hidden">
+            <span class="count">선택: <b id="poly-sel-name"></b></span>
+            <button class="btn" id="poly-sel-rotate" type="button" title="돌리기 (R)">↻ 돌리기</button>
+            <button class="btn" id="poly-sel-flip" type="button" title="뒤집기 (F)">⇄ 뒤집기</button>
+            <input type="text" id="poly-sel-memo" maxlength="4" placeholder="메모(1~4자)" aria-label="피스 메모" autocomplete="off" />
+            <button class="btn" id="poly-sel-remove" type="button" title="트레이로 되돌리기 (Delete)">트레이로</button>
+          </div>
+        </div>
+        <div class="panel" id="poly-tray-wrap">
+          <div class="poly-head"><span class="count">피스 트레이 <span id="poly-tray-count"></span></span><span class="spacer"></span><span class="hint">카드의 ↻ ⇄ 로 방향을 바꾼 뒤 끌어다 놓습니다</span></div>
+          <div id="poly-tray"></div>
+        </div>
+        <div class="panel hidden" id="poly-letters-wrap">
+          <div class="poly-head"><span class="count">글자 읽기</span></div>
+          <div id="poly-letters"></div>
+        </div>
+        <details class="panel" id="poly-solve-wrap">
+          <summary>답 탐색</summary>
+          <div class="poly-solve-body">
+            <div class="poly-solve-row">
+              <button class="btn" id="poly-solve" type="button">답 찾기</button>
+              <span class="hint" id="poly-solve-status">선택한 피스로 도면을 채우는 모든 답을 찾습니다. 이미 놓인(충돌 없는) 피스는 고정하고 나머지만 탐색합니다.</span>
+            </div>
+            <div class="poly-solve-row hidden" id="poly-solve-nav">
+              <button class="btn" id="poly-solve-prev" type="button" aria-label="이전 답">◀</button>
+              <span id="poly-solve-label"><b>1</b> / 1</span>
+              <button class="btn" id="poly-solve-next" type="button" aria-label="다음 답">▶</button>
+              <button class="btn" id="poly-solve-apply" type="button" title="이 답을 도면에 놓습니다 (되돌리기 가능)">이 답을 도면에 적용</button>
+            </div>
+            <div id="poly-solve-preview"></div>
+            <div id="poly-solve-thumbs"></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="panel" id="poly-right">
+        <div class="poly-head"><span class="count">피스 선택</span><span class="spacer"></span><span class="count" id="poly-area"></span></div>
+        <div class="seg poly-seg" id="poly-size-tabs" role="tablist" aria-label="피스 크기">
+          <button type="button" data-size="1">1칸</button><button type="button" data-size="2">2칸</button><button type="button" data-size="3">3칸</button>
+          <button type="button" data-size="4">4칸</button><button type="button" data-size="5" class="on">5칸</button><button type="button" data-size="6">6칸</button>
+          <button type="button" data-size="0">자작</button>
+        </div>
+        <div class="poly-bulk">
+          <button class="btn" id="poly-all-one" type="button">이 크기 전부 1개씩</button>
+          <button class="btn" id="poly-size-zero" type="button">이 크기 0으로</button>
+        </div>
+        <div id="poly-picker"></div>
+        <div id="poly-custom" class="hidden">
+          <p class="hint">칸을 눌러(끌어서) 피스를 그리고 「이 모양 저장」. 격자: <button class="btn" id="poly-custom-smaller" type="button">−</button> <b id="poly-custom-size">10</b>×<b id="poly-custom-size2">10</b> <button class="btn" id="poly-custom-larger" type="button">＋</button> (최대 20)</p>
+          <div id="poly-custom-grid"></div>
+          <div class="poly-bulk">
+            <button class="btn" id="poly-custom-save" type="button">이 모양 저장</button>
+            <button class="btn" id="poly-custom-clear" type="button">그린 칸 지우기</button>
+          </div>
+          <div id="poly-custom-list"></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <footer class="app">
