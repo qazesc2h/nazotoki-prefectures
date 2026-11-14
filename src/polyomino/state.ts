@@ -1,7 +1,11 @@
 /* 폴리오미노 — 상태 + localStorage 저장/복원 + 되돌리기 스택 */
 import { loadJSON, saveJSON } from '../shared/dom';
 import type { Board, Placement } from './model';
+import { normalize } from './model';
 import type { CustomShape } from './shapes';
+import { buildCatalog } from './shapes';
+import { migrateCounts } from './entries';
+import type { PieceEntry } from './entries';
 
 const LS_POLY = 'nazotoki-polyomino-v1';
 
@@ -15,12 +19,14 @@ export interface PolyState {
   allowRotate: boolean;
   allowFlip: boolean;
   forbidOverlap: boolean;               /* 겹치는 곳에는 놓을 수 없게 */
-  counts: Record<string, number | 'inf'>;   /* 카탈로그 키 → 개수 */
+  entries: PieceEntry[];                /* 고른 피스: 카탈로그 피스 + 방향 + 개수 */
+  nextEntryId: number;
+  pickOrient: Record<string, number>;   /* 피스 선택 카드에 보이는 방향 (카탈로그 키 → 자유 변형 인덱스) */
   customs: CustomShape[];
   nextCustomId: number;
   placements: Placement[];
   nextPlacementId: number;
-  trayOrient: Record<string, number>;   /* 트레이 카드의 현재 변형 인덱스 */
+  trayOrient: Record<string, number>;   /* 트레이 카드(항목 id)의 현재 변형 인덱스 — 허용된 회전·뒤집기 안에서 */
   sizeTab: number;                      /* 피스 선택 탭: 1~6칸, 0 = 자작 */
   cubeNetsOnly: boolean;                /* 6칸 탭: 정육면체 전개도(11종)만 표시 */
   customGrid: number;                   /* 자작 피스 격자 크기 (10~20) */
@@ -29,7 +35,7 @@ export interface PolyState {
 export const polyState: PolyState = {
   w: 6, h: 5, holes: [], letters: {}, editMode: 'place', coverLetters: false,
   allowRotate: true, allowFlip: true, forbidOverlap: false,
-  counts: {}, customs: [], nextCustomId: 1, placements: [], nextPlacementId: 1,
+  entries: [], nextEntryId: 1, pickOrient: {}, customs: [], nextCustomId: 1, placements: [], nextPlacementId: 1,
   trayOrient: {}, sizeTab: 5, customGrid: 10, cubeNetsOnly: false,
 };
 
@@ -47,15 +53,25 @@ export function polyLoadState(): void {
   if (raw.letters && typeof raw.letters === 'object') polyState.letters = raw.letters;
   if (raw.editMode === 'hole' || raw.editMode === 'letter' || raw.editMode === 'place') polyState.editMode = raw.editMode;
   (['coverLetters', 'allowRotate', 'allowFlip', 'forbidOverlap', 'cubeNetsOnly'] as const).forEach(k => { if (typeof raw[k] === 'boolean') polyState[k] = raw[k] as boolean; });
-  if (raw.counts && typeof raw.counts === 'object') {
-    polyState.counts = {};
-    for (const k of Object.keys(raw.counts)) { const v = raw.counts[k]; if (v === 'inf' || (typeof v === 'number' && v > 0)) polyState.counts[k] = v; }
-  }
   if (Array.isArray(raw.customs)) polyState.customs = raw.customs.filter(c => c && typeof c.rows === 'string' && Number.isFinite(c.id));
   polyState.nextCustomId = Math.max(num(raw.nextCustomId, 1, 1, 1e9), ...polyState.customs.map(c => c.id + 1));
   if (Array.isArray(raw.placements)) polyState.placements = raw.placements.filter(p => p && Array.isArray(p.cells) && Number.isFinite(p.id));
   polyState.nextPlacementId = Math.max(num(raw.nextPlacementId, 1, 1, 1e9), ...polyState.placements.map(p => p.id + 1));
-  if (raw.trayOrient && typeof raw.trayOrient === 'object') polyState.trayOrient = raw.trayOrient;
+  if (Array.isArray(raw.entries)) {
+    polyState.entries = raw.entries.filter(e => e && typeof e.key === 'string' && Array.isArray(e.shape) && e.shape.length && Number.isFinite(e.id) && (e.count === 'inf' || (typeof e.count === 'number' && e.count > 0)))
+      .map(e => ({ ...e, shape: normalize(e.shape) }));
+    if (raw.trayOrient && typeof raw.trayOrient === 'object') polyState.trayOrient = raw.trayOrient;
+  } else {
+    /* 예전 저장: 카탈로그 키별 개수 → 방향별 항목 */
+    const old = (raw as { counts?: Record<string, number | 'inf'> }).counts;
+    if (old && typeof old === 'object') {
+      const cat = buildCatalog(polyState.customs);
+      const m = migrateCounts(old, k => { const p = cat.find(c => c.key === k); return p ? p.shape : null; }, polyState.placements);
+      polyState.entries = m.entries; polyState.placements = m.placements;
+    }
+  }
+  polyState.nextEntryId = Math.max(num(raw.nextEntryId, 1, 1, 1e9), ...polyState.entries.map(e => e.id + 1));
+  if (raw.pickOrient && typeof raw.pickOrient === 'object') polyState.pickOrient = raw.pickOrient;
   polyState.sizeTab = num(raw.sizeTab, 5, 0, 6);
   polyState.customGrid = num(raw.customGrid, 10, 10, 20);
 }

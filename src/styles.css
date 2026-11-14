@@ -469,6 +469,9 @@ svg.poly-board.mode-hole .poly-cell, svg.poly-board.mode-letter .poly-cell { cur
 .poly-card .cnt { display: flex; align-items: center; gap: 3px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .poly-card .cnt b { min-width: 22px; text-align: center; }
 .poly-card.has { border-color: var(--accent); }
+.poly-pick-hint { margin: 0 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.poly-card .other { font-size: 10px; color: #a16207; white-space: nowrap; }
+@media (prefers-color-scheme: dark){ .poly-card .other { color: #f5c97a; } }
 .poly-card .inf { font-size: 11px; display: inline-flex; align-items: center; gap: 3px; color: var(--muted); cursor: pointer; }
 #poly-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; max-width: 100%; }
 .poly-card { max-width: 100%; }

@@ -137,7 +137,8 @@ export function resizeBoard(b: Board, w: number, h: number): Board {
 /* ---- 배치 ---- */
 export interface Placement {
   id: number;
-  key: string;        /* 카탈로그 피스 키 (색·개수 집계용) */
+  key: string;        /* 카탈로그 피스 키 (이름·색) */
+  entry?: number;     /* 고른 피스 항목 id (개수 집계용) */
   cells: Shape;       /* 놓인 변형 (정규화) */
   x: number; y: number;  /* 도면 상 원점 */
   memo?: string;

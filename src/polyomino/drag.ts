@@ -8,6 +8,7 @@ import type { Shape } from './model';
 
 export interface DragSpec {
   key: string; cells: Shape;
+  entry: number | null;             /* 트레이에서 꺼내는 중이면 그 항목 id */
   grabDx: number; grabDy: number;   /* 피스 안에서 잡은 위치 (칸 단위, 소수) */
   fromId: number | null;            /* 도면 위 피스를 옮기는 중이면 그 id */
   startX: number; startY: number;   /* 포인터 시작 좌표 (임계값 판정) */
@@ -74,7 +75,7 @@ function onUp(e: PointerEvent): void {
   if (spec.fromId !== null) {
     if (over && o) movePlacement(spec.fromId, o.x, o.y); else removePlacement(spec.fromId);
   } else if (over && o) {
-    placePiece(spec.key, spec.cells, o.x, o.y);
+    if (spec.entry !== null) placePiece(spec.entry, spec.cells, o.x, o.y);
   }
 }
 

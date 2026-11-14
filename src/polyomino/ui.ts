@@ -17,7 +17,7 @@ let isActive: () => boolean = () => false;
 let lastSig = '';
 
 function signature(): string {
-  return JSON.stringify([polyState.w, polyState.h, polyState.holes, polyState.counts, polyState.customs, polyState.allowRotate, polyState.allowFlip]);
+  return JSON.stringify([polyState.w, polyState.h, polyState.holes, polyState.entries, polyState.customs, polyState.allowRotate, polyState.allowFlip]);
 }
 
 function renderAll(): void {

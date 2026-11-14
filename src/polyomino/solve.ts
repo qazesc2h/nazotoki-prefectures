@@ -5,9 +5,11 @@ import type { Placement } from './model';
 import { solve } from './solver';
 import type { SolverPlacement } from './solver';
 import { boardThumb, pieceColor } from './draw';
-import { catalog, pieceByKey, polyUi, polyRender, symOpts } from './actions';
+import { pieceByKey, polyUi, polyRender, symOpts } from './actions';
+import { groupEntries, solverPieces, assignSolution } from './entries';
+import type { SolveGroup } from './entries';
 
-interface SolveView { solutions: SolverPlacement[][]; truncated: boolean; fixed: Placement[]; idx: number; w: number; h: number; holes: string[]; }
+interface SolveView { solutions: SolverPlacement[][]; truncated: boolean; fixed: Placement[]; idx: number; w: number; h: number; holes: string[]; groups: SolveGroup[]; }
 let view: SolveView | null = null;
 
 function els() {
@@ -29,12 +31,9 @@ export function runSolve(): void {
   const fixed = polyState.placements.slice();
   const fixedCells = new Set<string>();
   for (const p of fixed) for (const [x, y] of absCells(p)) fixedCells.add(cellKey(x, y));
-  const placedCount: Record<string, number> = {};
-  for (const p of fixed) placedCount[p.key] = (placedCount[p.key] || 0) + 1;
-  const pieces = catalog().filter(p => polyState.counts[p.key] !== undefined).map(p => {
-    const c = polyState.counts[p.key];
-    return { key: p.key, shape: p.shape, count: c === 'inf' ? 'inf' as const : Math.max(0, (c as number) - (placedCount[p.key] || 0)) };
-  });
+  /* 허용된 대칭으로 같은 피스가 되는 항목끼리 묶어 넘긴다 (회전·뒤집기를 끄면 고른 방향 그대로) */
+  const groups = groupEntries(polyState.entries, fixed, symOpts());
+  const pieces = solverPieces(groups);
   if (e.status) e.status.textContent = '탐색 중…';
   if (e.btn) e.btn.disabled = true;
   const seq = ++polyUi.solveSeq;
@@ -44,7 +43,7 @@ export function runSolve(): void {
     const ms = Math.round(performance.now() - t0);
     if (seq !== polyUi.solveSeq) return;
     if (e.btn) e.btn.disabled = false;
-    view = { solutions: r.solutions, truncated: r.truncated, fixed, idx: 0, w: b.w, h: b.h, holes: polyState.holes.slice() };
+    view = { solutions: r.solutions, truncated: r.truncated, fixed, idx: 0, w: b.w, h: b.h, holes: polyState.holes.slice(), groups };
     if (e.status) {
       if (r.reason) e.status.textContent = '답 없음 — ' + r.reason;
       else if (!r.solutions.length) e.status.textContent = r.truncated ? '탐색 상한에 걸렸지만 답을 찾지 못했습니다 (' + ms + 'ms).' : '답이 없습니다 (' + ms + 'ms, ' + r.steps.toLocaleString() + '단계).';
@@ -65,7 +64,7 @@ export function renderSolveView(): void {
   if (!v || !has) return;
   if (v.idx >= v.solutions.length) v.idx = 0;
   label.innerHTML = '<b>' + (v.idx + 1) + '</b> / ' + v.solutions.length + (v.truncated ? '+' : '');
-  const colorOf = (key: string) => { const p = pieceByKey(key); return p ? pieceColor(p.colorIdx) : '#bbb'; };
+  const colorOf = (key: string) => { const g = v.groups.find(x => x.gkey === key); const p = pieceByKey(g ? g.key : key); return p ? pieceColor(p.colorIdx) : '#bbb'; };
   const pieces = (sol: SolverPlacement[]) => [
     ...v.fixed.map(p => ({ cells: absCells(p), color: colorOf(p.key) })),
     ...sol.map(p => ({ cells: p.cells.map(([dx, dy]) => [p.x + dx, p.y + dy] as [number, number]), color: colorOf(p.key) })),
@@ -87,7 +86,8 @@ function applyCurrent(): void {
   const v = view; if (!v || !v.solutions.length) return;
   pushUndo();
   const sol = v.solutions[v.idx];
-  for (const p of sol) polyState.placements.push({ id: polyState.nextPlacementId++, key: p.key, cells: p.cells, x: p.x, y: p.y });
+  const who = assignSolution(sol, v.groups, polyState.entries, polyState.placements);
+  sol.forEach((p, i) => { polyState.placements.push({ id: polyState.nextPlacementId++, key: who[i].key, entry: who[i].entry >= 0 ? who[i].entry : undefined, cells: p.cells, x: p.x, y: p.y }); });
   polySaveState(); polyRender();
 }
 

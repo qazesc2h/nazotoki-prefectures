@@ -285,8 +285,8 @@
           <button type="button" data-mode="letter" title="칸을 눌러 글자를 넣습니다. 엔터·→ 로 다음 칸">글자</button>
         </div>
       </div>
-      <button class="btn on" id="poly-opt-rotate" type="button" aria-pressed="true" title="피스를 90°씩 돌릴 수 있게 합니다">회전 허용: 켬</button>
-      <button class="btn on" id="poly-opt-flip" type="button" aria-pressed="true" title="피스를 뒤집을 수 있게 합니다. 끄면 거울상 피스가 별개 카드로 나뉩니다">뒤집기 허용: 켬</button>
+      <button class="btn on" id="poly-opt-rotate" type="button" aria-pressed="true" title="고른 피스를 트레이·도면·답 탐색에서 90°씩 돌릴 수 있게 합니다. 끄면 피스 선택에서 고른 방향 그대로만 씁니다">회전 허용: 켬</button>
+      <button class="btn on" id="poly-opt-flip" type="button" aria-pressed="true" title="고른 피스를 트레이·도면·답 탐색에서 뒤집을 수 있게 합니다. 끄면 피스 선택에서 고른 면 그대로만 씁니다">뒤집기 허용: 켬</button>
       <button class="btn" id="poly-opt-overlap" type="button" aria-pressed="false" title="켜면 겹치거나 구멍·도면 밖에 걸치는 자리에는 놓을 수 없습니다">겹침 금지: 끔</button>
       <button class="btn" id="poly-opt-cover" type="button" aria-pressed="false" title="켜면 피스가 덮은 글자를 숨깁니다 (기본은 피스를 반투명하게 그려 글자가 비침)">피스로 글자 가리기: 끔</button>
       <div class="spacer"></div>
@@ -343,6 +343,7 @@
 
       <div class="panel" id="poly-right">
         <div class="poly-head"><span class="count">피스 선택</span><span class="spacer"></span><span class="count" id="poly-area"></span></div>
+        <p class="hint poly-pick-hint">↻ ⇄ 로 방향을 고르고 ＋ (방향별로 담김)</p>
         <div class="seg poly-seg" id="poly-size-tabs" role="tablist" aria-label="피스 크기">
           <button type="button" data-size="1">1칸</button><button type="button" data-size="2">2칸</button><button type="button" data-size="3">3칸</button>
           <button type="button" data-size="4">4칸</button><button type="button" data-size="5" class="on">5칸</button><button type="button" data-size="6">6칸</button>
