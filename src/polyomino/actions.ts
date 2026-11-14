@@ -97,8 +97,9 @@ function transformPlacement(id: number, fn: (s: Shape) => Shape): void {
   /* 허용 변형 안에 있는지 (회전 금지면 돌리지 않음) */
   const allowed = orientations(p.cells, symOpts()).map(shapeKey);
   if (!allowed.includes(shapeKey(next))) return;
-  /* 같은 칸(무게중심 근처)에 머물도록 원점 보정 */
-  const cx = (s: Shape) => s.reduce((a, c) => a + c[0], 0) / s.length, cy = (s: Shape) => s.reduce((a, c) => a + c[1], 0) / s.length;
+  /* 제자리에 머물도록 원점 보정: 피스를 감싸는 사각형의 중심을 맞춘다.
+     (칸들의 무게중심을 쓰면 칸이 떨어진 자작 피스는 무게중심이 한쪽으로 쏠려 돌릴 때마다 피스가 밀린다) */
+  const cx = (s: Shape) => (Math.min(...s.map(c => c[0])) + Math.max(...s.map(c => c[0]))) / 2, cy = (s: Shape) => (Math.min(...s.map(c => c[1])) + Math.max(...s.map(c => c[1]))) / 2;
   const nx = Math.round(p.x + cx(p.cells) - cx(next)), ny = Math.round(p.y + cy(p.cells) - cy(next));
   if (!canPlaceHere(next, nx, ny, id)) return;
   pushUndo(); p.cells = next; p.x = nx; p.y = ny;

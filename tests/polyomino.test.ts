@@ -127,3 +127,19 @@ describe('답 탐색', () => {
     expect(capped.solutions).toHaveLength(3); expect(capped.truncated).toBe(true);
   });
 });
+
+describe('떨어진 칸이 있는 자작 피스', () => {
+  it('떨어진 피스도 한 덩어리로 놓이고 답 탐색에 쓰인다', () => {
+    /* 3×1 도면: 「#.#」 피스 1개 + 1칸 피스 1개 → 답 1개 (가운데를 1칸이 채움) */
+    const board: Board = { w: 3, h: 1, holes: new Set(), letters: {} };
+    const r = solve(board, [{ key: 'u:1', shape: shapeFromRows('#.#'), count: 1 }, { key: 'm', shape: shapeFromRows('#'), count: 1 }], FREE);
+    expect(r.reason).toBeUndefined();
+    expect(r.solutions).toHaveLength(1);
+    const gap = r.solutions[0].find(p => p.key === 'u:1')!;
+    expect(gap.cells.map(([x, y]) => (gap.x + x) + ',' + (gap.y + y)).sort()).toEqual(['0,0', '2,0']);
+  });
+  it('돌리면 떨어진 칸도 함께 돈다', () => {
+    const o = orientations(shapeFromRows('#.#'), FREE).map(shapeKey).sort();
+    expect(o).toHaveLength(2);   /* 가로 #.# 와 세로 */
+  });
+});
