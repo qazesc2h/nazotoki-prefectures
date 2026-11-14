@@ -79,7 +79,7 @@ export function renderBoard(): void {
       e.preventDefault(); e.stopPropagation();
       const c = cellAtClient(e.clientX, e.clientY);
       if (!c) return;
-      startDrag({ key: p.key, cells: p.cells, grabDx: c.fx - p.x - 0.5, grabDy: c.fy - p.y - 0.5, fromId: p.id, startX: e.clientX, startY: e.clientY }, e);
+      startDrag({ key: p.key, entry: null, cells: p.cells, grabDx: c.fx - p.x - 0.5, grabDy: c.fy - p.y - 0.5, fromId: p.id, startX: e.clientX, startY: e.clientY }, e);
     });
     piecesG.appendChild(g);
   }

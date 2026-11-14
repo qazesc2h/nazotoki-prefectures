@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { normalize, shapeKey, shapeFromRows, orientations, canonicalKey, isChiral, isConnected, isCubeNet, rotateCW, flipH, computeCoverage, isComplete, readLetters, resizeBoard, openCellCount, FREE, ONE_SIDED } from '../src/polyomino/model';
 import type { Board, Placement } from '../src/polyomino/model';
-import { freePolyominoes, BASE_CATALOG, buildCatalog, keyForShape } from '../src/polyomino/shapes';
+import { freePolyominoes, BASE_CATALOG, buildCatalog } from '../src/polyomino/shapes';
+import { groupEntries, solverPieces, assignSolution, migrateCounts, findEntry } from '../src/polyomino/entries';
+import type { PieceEntry } from '../src/polyomino/entries';
 import { solve } from '../src/polyomino/solver';
 
 const board = (w: number, h: number, holes: string[] = [], letters: Record<string, string> = {}): Board => ({ w, h, holes: new Set(holes), letters });
@@ -42,15 +44,10 @@ describe('카탈로그', () => {
     expect(new Set(BASE_CATALOG.map(p => p.key)).size).toBe(BASE_CATALOG.length);
     expect(BASE_CATALOG.filter(p => p.size === 6)).toHaveLength(35);
   });
-  it('뒤집기 금지면 거울상 피스가 두 장으로', () => {
-    const free = buildCatalog(FREE, []);
-    const oneSided = buildCatalog(ONE_SIDED, []);
-    expect(free.filter(p => p.size === 4)).toHaveLength(5);
-    expect(oneSided.filter(p => p.size === 4)).toHaveLength(7);   /* S/Z, L/J 분리 */
-    expect(oneSided.filter(p => p.size === 5)).toHaveLength(18);
-    const S = free.find(p => p.size === 4 && p.name === 'S')!;
-    expect(keyForShape(oneSided, S.shape, ONE_SIDED, S.key)).toBe(S.key + ':a');
-    expect(keyForShape(oneSided, flipH(S.shape), ONE_SIDED, S.key)).toBe(S.key + ':b');
+  it('카탈로그는 모양 종류만 (방향은 고를 때 정함): 4칸 5종 · 5칸 12종', () => {
+    const cat = buildCatalog([]);
+    expect(cat.filter(p => p.size === 4)).toHaveLength(5);
+    expect(cat.filter(p => p.size === 5)).toHaveLength(12);
   });
   it('정육면체 전개도: 35종 중 11종, 십자형은 전개도·2×3·일자는 아님', () => {
     expect(BASE_CATALOG.filter(p => p.size === 6 && p.cubeNet)).toHaveLength(11);
@@ -64,7 +61,7 @@ describe('카탈로그', () => {
     expect(isCubeNet(rotateCW(cross))).toBe(true); expect(isCubeNet(flipH(cross))).toBe(true);
   });
   it('자작 피스', () => {
-    const cat = buildCatalog(FREE, [{ id: 7, rows: '#./##/.#' }]);
+    const cat = buildCatalog([{ id: 7, rows: '#./##/.#' }]);
     const u = cat.find(p => p.key === 'u:7')!;
     expect(u.custom).toBe(true); expect(u.size).toBe(4);
   });
@@ -141,5 +138,56 @@ describe('떨어진 칸이 있는 자작 피스', () => {
   it('돌리면 떨어진 칸도 함께 돈다', () => {
     const o = orientations(shapeFromRows('#.#'), FREE).map(shapeKey).sort();
     expect(o).toHaveLength(2);   /* 가로 #.# 와 세로 */
+  });
+});
+
+describe('방향을 골라 담은 피스 (항목)', () => {
+  const FIXED = { allowRotate: false, allowFlip: false };
+  const L = shapeFromRows('###/#..'), L180 = rotateCW(rotateCW(L)), J = flipH(L);
+  const entries: PieceEntry[] = [
+    { id: 1, key: 'L', shape: L, count: 1 },
+    { id: 2, key: 'L', shape: L180, count: 1 },
+  ];
+  const board = (w: number, h: number): Board => ({ w, h, holes: new Set(), letters: {} });
+  it('같은 모양·다른 방향은 항목이 둘, 찾기는 방향까지 맞아야', () => {
+    expect(findEntry(entries, 'L', L)!.id).toBe(1);
+    expect(findEntry(entries, 'L', L180)!.id).toBe(2);
+    expect(findEntry(entries, 'L', J)).toBeUndefined();
+  });
+  it('답 탐색 묶음: 회전 허용이면 한 피스로 합치고(중복 답 방지), 회전·뒤집기 금지면 방향별로 따로', () => {
+    const free = groupEntries(entries, [], FREE);
+    expect(free).toHaveLength(1); expect(free[0].count).toBe(2);
+    const fixed = groupEntries(entries, [], FIXED);
+    expect(fixed).toHaveLength(2);
+    /* 뒤집기만 금지: L 과 L180 은 회전으로 겹치므로 한 묶음, J 는 따로 */
+    expect(groupEntries([...entries, { id: 3, key: 'L', shape: J, count: 1 }], [], ONE_SIDED)).toHaveLength(2);
+  });
+  it('회전·뒤집기를 꺼도 고른 방향으로 답을 찾는다: 4×2 = L + 180° 돌린 L', () => {
+    const fixed = groupEntries(entries, [], FIXED);
+    const r = solve(board(4, 2), solverPieces(fixed), FIXED);
+    expect(r.solutions).toHaveLength(1);
+    /* 같은 방향 L 두 개로는 4×2 를 못 채움 */
+    expect(solve(board(4, 2), solverPieces(groupEntries([{ id: 1, key: 'L', shape: L, count: 2 }], [], FIXED)), FIXED).solutions).toHaveLength(0);
+    /* 답을 도면에 적용할 때 각 배치는 방향이 같은 항목으로 */
+    const who = assignSolution(r.solutions[0], fixed, entries, []);
+    expect(who.map(w => w.entry).sort()).toEqual([1, 2]);
+  });
+  it('회전 허용 묶음에서도 배치는 방향이 같은 항목에 우선 배정', () => {
+    const free = groupEntries(entries, [], FREE);
+    const r = solve(board(4, 2), solverPieces(free), FREE);
+    for (const sol of r.solutions) {
+      const who = assignSolution(sol, free, entries, []);
+      expect(new Set(who.map(w => w.entry)).size).toBe(2);   /* 두 항목에 하나씩 */
+    }
+  });
+  it('예전 저장(키별 개수, 뒤집기 금지 때 :a/:b)을 항목으로 옮김', () => {
+    const shapeOf = (k: string) => (k === 'L' ? L : k === 'O' ? shapeFromRows('##/##') : null);
+    const placements = [{ id: 1, key: 'L:b', cells: J, x: 0, y: 0 }, { id: 2, key: 'O', cells: shapeFromRows('##/##'), x: 2, y: 0 }];
+    const m = migrateCounts({ 'L:a': 1, 'L:b': 2, O: 'inf', X: 3 }, shapeOf, placements);
+    expect(m.entries).toHaveLength(3);
+    expect(m.entries.find(e => e.key === 'L' && e.count === 2)!.shape).toEqual(normalize(J));
+    expect(m.placements[0].key).toBe('L');
+    expect(m.placements[0].entry).toBe(m.entries.find(e => e.key === 'L' && e.count === 2)!.id);
+    expect(m.placements[1].entry).toBe(m.entries.find(e => e.key === 'O')!.id);
   });
 });

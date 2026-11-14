@@ -2,7 +2,9 @@
 import { polyState, polySaveState } from './state';
 import { askConfirm, notify } from '../shared/dialog';
 import { shapeSvg, pieceColor } from './draw';
-import { catalog, bumpCount, toggleInf, setAllOfSize, addCustom, removeCustom, polyRender, isPickerVisible, setCubeNetsOnly } from './actions';
+import { catalog, bumpPick, togglePickInf, pickTurn, pickShape, pickEntry, entriesOfKey, setAllOfSize, addCustom, removeCustom, polyRender, isPickerVisible, setCubeNetsOnly } from './actions';
+import type { CatalogPiece } from './shapes';
+import { orientations, rotateCW, flipH, shapeKey, FREE } from './model';
 import { normalize, shapeSize } from './model';
 import type { Cell } from './model';
 
@@ -28,33 +30,54 @@ export function renderPicker(): void {
   if (!isCustom) {
     for (const p of catalog()) {
       if (!isPickerVisible(p, polyState.sizeTab)) continue;
-      wrap.appendChild(pieceCard(p.key, p.name + (p.cubeNet ? ' 🎲' : ''), p.shape, pieceColor(p.colorIdx)));
+      wrap.appendChild(pieceCard(p, p.name + (p.cubeNet ? ' 🎲' : '')));
     }
   } else {
     renderCustomEditor();
   }
 }
 
-function pieceCard(key: string, name: string, shape: Cell[], color: string, onDelete?: () => void): HTMLDivElement {
-  const c = polyState.counts[key];
+/** 피스 카드: 방향 고르기(↻ ⇄, 회전·뒤집기 허용과 무관) + 그 방향의 개수 −/＋/제한 없음 */
+function pieceCard(p: CatalogPiece, name: string, onDelete?: () => void): HTMLDivElement {
+  const shape = pickShape(p);
+  const e = pickEntry(p);
+  const c = e ? e.count : 0;
+  const all = entriesOfKey(p.key);
   const card = document.createElement('div');
-  card.className = 'poly-card' + (c ? ' has' : '');
-  card.dataset.key = key;
-  card.appendChild(shapeSvg(normalize(shape), color, CARD_PX));
+  card.className = 'poly-card' + (all.length ? ' has' : '');
+  card.dataset.key = p.key;
+  card.appendChild(shapeSvg(normalize(shape), pieceColor(p.colorIdx), CARD_PX));
+  const k = shapeKey(shape);
+  const ops = document.createElement('div'); ops.className = 'ops';
+  const rot = document.createElement('button'); rot.type = 'button'; rot.className = 'btn'; rot.textContent = '↻'; rot.title = '고를 방향 돌리기';
+  rot.disabled = shapeKey(rotateCW(shape)) === k; rot.addEventListener('click', () => pickTurn(p.key, 'rotate'));
+  const flp = document.createElement('button'); flp.type = 'button'; flp.className = 'btn'; flp.textContent = '⇄'; flp.title = '고를 방향 뒤집기';
+  flp.disabled = shapeKey(flipH(shape)) === k; flp.addEventListener('click', () => pickTurn(p.key, 'flip'));
+  ops.appendChild(rot); ops.appendChild(flp);
+  if (orientations(p.shape, FREE).length > 1) card.appendChild(ops);
   const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = name; card.appendChild(nm);
   const cnt = document.createElement('div'); cnt.className = 'cnt';
-  const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'btn'; minus.textContent = '−'; minus.setAttribute('aria-label', name + ' 1개 줄이기');
-  minus.addEventListener('click', () => bumpCount(key, -1));
+  const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'btn'; minus.textContent = '−'; minus.setAttribute('aria-label', name + ' (이 방향) 1개 줄이기');
+  minus.addEventListener('click', () => bumpPick(p.key, -1));
   const num = document.createElement('b'); num.textContent = c === 'inf' ? '∞' : String(c || 0);
-  const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'btn'; plus.textContent = '＋'; plus.setAttribute('aria-label', name + ' 1개 늘리기');
-  plus.addEventListener('click', () => bumpCount(key, 1));
+  const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'btn'; plus.textContent = '＋'; plus.setAttribute('aria-label', name + ' (이 방향) 1개 늘리기');
+  plus.addEventListener('click', () => bumpPick(p.key, 1));
   cnt.appendChild(minus); cnt.appendChild(num); cnt.appendChild(plus);
   card.appendChild(cnt);
   const inf = document.createElement('label'); inf.className = 'inf';
   const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = c === 'inf';
-  cb.addEventListener('change', () => toggleInf(key));
+  cb.addEventListener('change', () => togglePickInf(p.key));
   inf.appendChild(cb); inf.appendChild(document.createTextNode('제한 없음'));
   card.appendChild(inf);
+  /* 다른 방향으로 고른 것 */
+  const others = all.filter(x => x !== e);
+  if (others.length) {
+    const n = others.reduce((s, x) => s === Infinity || x.count === 'inf' ? Infinity : s + x.count, 0);
+    const o = document.createElement('span'); o.className = 'other';
+    o.textContent = '다른 방향 ' + (n === Infinity ? '∞' : n + '개');
+    o.title = '같은 모양을 다른 방향으로 고른 것. ↻ ⇄ 로 그 방향을 보이면 개수를 바꿀 수 있습니다';
+    card.appendChild(o);
+  }
   if (onDelete) {
     const del = document.createElement('button'); del.type = 'button'; del.className = 'btn'; del.textContent = '삭제'; del.style.cssText = 'font-size:11px; padding:1px 7px';
     del.addEventListener('click', onDelete);
@@ -87,7 +110,7 @@ function renderCustomEditor(): void {
   for (const p of catalog()) {
     if (!p.custom) continue;
     const id = Number(p.key.slice(2));
-    list.appendChild(pieceCard(p.key, p.name, p.shape, pieceColor(p.colorIdx), () => { askConfirm('자작 피스 「' + p.name + '」를 삭제할까요? 놓인 것도 함께 사라집니다.', { ok: '삭제' }).then(ok => { if (ok) removeCustom(id); }); }));
+    list.appendChild(pieceCard(p, p.name, () => { askConfirm('자작 피스 「' + p.name + '」를 삭제할까요? 놓인 것도 함께 사라집니다.', { ok: '삭제' }).then(ok => { if (ok) removeCustom(id); }); }));
   }
 }
 

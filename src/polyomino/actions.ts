@@ -1,8 +1,10 @@
 /* 폴리오미노 — 상태 변경 동작 (저장·되돌리기·재렌더 포함). UI 모듈은 이 함수들만 호출한다. */
 import { polyState, polySaveState, pushUndo, boardOf } from './state';
-import { buildCatalog, findPiece, keyForShape, pieceOrientations } from './shapes';
+import { buildCatalog, findPiece } from './shapes';
 import type { CatalogPiece } from './shapes';
-import { computeCoverage, resizeBoard, cellKey, inBoard, isHole, rotateCW, flipH, normalize, shapeKey, orientations } from './model';
+import { computeCoverage, resizeBoard, cellKey, inBoard, isHole, rotateCW, flipH, normalize, shapeKey, orientations, FREE } from './model';
+import { findEntry, entryRemaining, entryOrientations } from './entries';
+import type { PieceEntry } from './entries';
 import type { Placement, Shape, SymmetryOpts } from './model';
 import type { EditMode } from './state';
 
@@ -15,41 +17,57 @@ export function polyRender(): void { renderer(); }
 export const polyUi = { selectedId: null as number | null, solveSeq: 0 };
 
 export function symOpts(): SymmetryOpts { return { allowRotate: polyState.allowRotate, allowFlip: polyState.allowFlip }; }
-export function catalog(): CatalogPiece[] { return buildCatalog(symOpts(), polyState.customs); }
+export function catalog(): CatalogPiece[] { return buildCatalog(polyState.customs); }
 export function pieceByKey(key: string): CatalogPiece | null { return findPiece(catalog(), key); }
 
-/** 남은 개수 (무제한이면 Infinity) */
-export function remaining(key: string): number {
-  const c = polyState.counts[key];
-  if (c === 'inf') return Infinity;
-  const placed = polyState.placements.filter(p => p.key === key).length;
-  return Math.max(0, (c || 0) - placed);
+export function entryById(id: number | undefined): PieceEntry | undefined { return id === undefined ? undefined : polyState.entries.find(e => e.id === id); }
+/** 항목의 남은 개수 (무제한이면 Infinity) */
+export function remaining(entryId: number): number {
+  const e = entryById(entryId);
+  return e ? entryRemaining(e, polyState.placements) : 0;
 }
 /** 선택한 피스 총 칸 수 (무제한 피스는 제외) 와 무제한 피스 존재 여부 */
 export function selectedArea(): { area: number; hasInf: boolean } {
   let area = 0, hasInf = false;
-  for (const p of catalog()) {
-    const c = polyState.counts[p.key];
-    if (c === 'inf') hasInf = true; else if (c) area += c * p.size;
-  }
+  for (const e of polyState.entries) { if (e.count === 'inf') hasInf = true; else area += e.count * e.shape.length; }
   return { area, hasInf };
 }
-/** 트레이 카드에 보이는 변형 */
-export function trayShape(p: CatalogPiece): Shape {
-  const os = pieceOrientations(p, symOpts());
-  const i = ((polyState.trayOrient[p.key] || 0) % os.length + os.length) % os.length;
+
+/* ---- 피스 선택 카드의 방향 (회전·뒤집기 허용과 무관하게 항상 8방향 중에서 고른다) ---- */
+export function pickShape(p: CatalogPiece): Shape {
+  const os = orientations(p.shape, FREE);
+  const i = (((polyState.pickOrient[p.key] || 0) % os.length) + os.length) % os.length;
   return os[i];
 }
-export function trayRotate(key: string, dir: 1 | -1 = 1): void {
+export function pickTurn(key: string, how: 'rotate' | 'flip'): void {
   const p = pieceByKey(key); if (!p) return;
-  const os = pieceOrientations(p, symOpts());
-  const cur = trayShape(p);
-  const target = shapeKey(dir === 1 ? rotateCW(cur) : flipH(cur));
+  const os = orientations(p.shape, FREE);
+  const cur = pickShape(p);
+  const target = shapeKey(how === 'rotate' ? rotateCW(cur) : flipH(cur));
   const idx = os.findIndex(o => shapeKey(o) === target);
-  if (idx >= 0) polyState.trayOrient[key] = idx;
+  if (idx >= 0) polyState.pickOrient[key] = idx;
   polySaveState(); polyRender();
 }
-export function trayFlip(key: string): void { trayRotate(key, -1); }
+/** 카드에 보이는 방향의 항목 */
+export function pickEntry(p: CatalogPiece): PieceEntry | undefined { return findEntry(polyState.entries, p.key, pickShape(p)); }
+export function entriesOfKey(key: string): PieceEntry[] { return polyState.entries.filter(e => e.key === key); }
+
+/** 트레이 카드에 보이는 변형 (항목이 고른 방향에서 허용된 회전·뒤집기 안에서) */
+export function trayShape(e: PieceEntry): Shape {
+  const os = entryOrientations(e, symOpts());
+  const i = (((polyState.trayOrient[e.id] || 0) % os.length) + os.length) % os.length;
+  return os[i];
+}
+export function trayRotate(entryId: number, dir: 1 | -1 = 1): void {
+  const e = entryById(entryId); if (!e) return;
+  const os = entryOrientations(e, symOpts());
+  const cur = trayShape(e);
+  const target = shapeKey(dir === 1 ? rotateCW(cur) : flipH(cur));
+  const idx = os.findIndex(o => shapeKey(o) === target);
+  if (idx >= 0) polyState.trayOrient[entryId] = idx;
+  polySaveState(); polyRender();
+}
+export function trayFlip(entryId: number): void { trayRotate(entryId, -1); }
 
 /** 겹침 금지 옵션일 때 놓을 수 없는 자리인가 (ignoreId 피스 자신은 제외) */
 export function wouldConflict(cells: Shape, x: number, y: number, ignoreId: number | null): boolean {
@@ -66,11 +84,12 @@ export function canPlaceHere(cells: Shape, x: number, y: number, ignoreId: numbe
 }
 
 /* ---- 배치 ---- */
-export function placePiece(key: string, cells: Shape, x: number, y: number): Placement | null {
-  if (remaining(key) <= 0) return null;
+export function placePiece(entryId: number, cells: Shape, x: number, y: number): Placement | null {
+  const e = entryById(entryId); if (!e) return null;
+  if (remaining(entryId) <= 0) return null;
   if (!canPlaceHere(cells, x, y, null)) return null;
   pushUndo();
-  const p: Placement = { id: polyState.nextPlacementId++, key, cells: normalize(cells), x, y };
+  const p: Placement = { id: polyState.nextPlacementId++, key: e.key, entry: e.id, cells: normalize(cells), x, y };
   polyState.placements.push(p);
   polyUi.selectedId = p.id;
   polySaveState(); polyRender();
@@ -149,26 +168,44 @@ export function setLetter(x: number, y: number, ch: string): void {
 export function hasLetters(): boolean { return Object.keys(polyState.letters).some(k => polyState.letters[k]); }
 
 /* ---- 피스 선택 ---- */
-export function setCount(key: string, v: number | 'inf'): void {
-  if (v === 'inf') polyState.counts[key] = 'inf';
-  else if (v <= 0) delete polyState.counts[key];
-  else polyState.counts[key] = Math.min(99, Math.floor(v));
-  /* 개수를 줄이면 초과 배치는 뒤에서부터 트레이로 */
+/** 항목 개수 설정. 0 이하면 항목을 없앤다. 개수를 줄이면 초과 배치는 뒤에서부터 트레이로 */
+function setEntryCount(e: PieceEntry, v: number | 'inf'): void {
   if (v !== 'inf') {
-    const placed = polyState.placements.filter(p => p.key === key);
-    const over = placed.length - (v <= 0 ? 0 : Math.floor(v));
+    const n = Math.max(0, Math.min(99, Math.floor(v)));
+    const placed = polyState.placements.filter(p => p.entry === e.id);
+    const over = placed.length - n;
     if (over > 0) { pushUndo(); const drop = new Set(placed.slice(-over).map(p => p.id)); polyState.placements = polyState.placements.filter(p => !drop.has(p.id)); if (polyUi.selectedId !== null && drop.has(polyUi.selectedId)) polyUi.selectedId = null; }
-  }
+    if (n <= 0) { polyState.entries = polyState.entries.filter(x => x.id !== e.id); delete polyState.trayOrient[e.id]; }
+    else e.count = n;
+  } else e.count = 'inf';
+}
+function addEntry(key: string, shape: Shape, count: number | 'inf'): PieceEntry {
+  const e: PieceEntry = { id: polyState.nextEntryId++, key, shape: normalize(shape), count };
+  polyState.entries.push(e);
+  return e;
+}
+/** 피스 선택 카드(보이는 방향)의 개수 ±d */
+export function bumpPick(key: string, d: number): void {
+  const p = pieceByKey(key); if (!p) return;
+  const e = pickEntry(p);
+  if (!e) { if (d > 0) addEntry(key, pickShape(p), d); }
+  else if (e.count === 'inf') { if (d < 0) setEntryCount(e, polyState.placements.filter(q => q.entry === e.id).length); }
+  else setEntryCount(e, e.count + d);
   polySaveState(); polyRender();
 }
-export function bumpCount(key: string, d: number): void {
-  const c = polyState.counts[key];
-  if (c === 'inf') { if (d < 0) setCount(key, polyState.placements.filter(p => p.key === key).length); return; }
-  setCount(key, (c || 0) + d);
+export function togglePickInf(key: string): void {
+  const p = pieceByKey(key); if (!p) return;
+  const e = pickEntry(p);
+  if (!e) addEntry(key, pickShape(p), 'inf');
+  else setEntryCount(e, e.count === 'inf' ? polyState.placements.filter(q => q.entry === e.id).length : 'inf');
+  polySaveState(); polyRender();
 }
-export function toggleInf(key: string): void {
-  const c = polyState.counts[key];
-  setCount(key, c === 'inf' ? polyState.placements.filter(p => p.key === key).length : 'inf');
+/** 트레이 카드(항목)의 개수 ±d */
+export function bumpEntry(entryId: number, d: number): void {
+  const e = entryById(entryId); if (!e) return;
+  if (e.count === 'inf') { if (d < 0) setEntryCount(e, polyState.placements.filter(q => q.entry === e.id).length); }
+  else setEntryCount(e, e.count + d);
+  polySaveState(); polyRender();
 }
 /** 피스 선택 패널에 지금 보이는 피스인가 (6칸 탭의 「주사위 전개도만」 필터 반영) */
 export function isPickerVisible(p: CatalogPiece, size: number): boolean {
@@ -177,35 +214,20 @@ export function isPickerVisible(p: CatalogPiece, size: number): boolean {
   if (size === 6 && polyState.cubeNetsOnly && !p.cubeNet) return false;
   return true;
 }
+/** 「이 크기 전부 1개씩」: 아직 고르지 않은 피스를 카드에 보이는 방향으로 1개씩 · n=0 이면 이 크기 피스를 모든 방향에서 뺀다 */
 export function setAllOfSize(size: number, n: number): void {
-  for (const p of catalog()) if (isPickerVisible(p, size)) setCount(p.key, n);
+  for (const p of catalog()) {
+    if (!isPickerVisible(p, size)) continue;
+    if (n > 0) { if (!entriesOfKey(p.key).length) addEntry(p.key, pickShape(p), n); }
+    else for (const e of entriesOfKey(p.key)) setEntryCount(e, 0);
+  }
+  polySaveState(); polyRender();
 }
 export function setCubeNetsOnly(on: boolean): void { polyState.cubeNetsOnly = on; polySaveState(); polyRender(); }
 
 /* ---- 옵션 ---- */
-export function setAllowFlip(on: boolean): void {
-  if (polyState.allowFlip === on) return;
-  const before = catalog();
-  polyState.allowFlip = on;
-  const after = catalog();
-  /* 개수 재배정: 켬→끔 이면 자유 키 → ':a' 로, 끔→켬 이면 ':a'+':b' 합산 → 자유 키 */
-  const counts: Record<string, number | 'inf'> = {};
-  const add = (k: string, v: number | 'inf') => { if (v === 'inf' || counts[k] === 'inf') counts[k] = 'inf'; else counts[k] = (counts[k] as number || 0) + v; };
-  for (const k of Object.keys(polyState.counts)) {
-    const v = polyState.counts[k];
-    if (k.startsWith('u:')) { add(k, v); continue; }
-    const base = k.replace(/:[ab]$/, '');
-    if (on) add(base, v);
-    else { const target = after.some(p => p.key === base + ':a') ? base + ':a' : base; add(target, v); }
-  }
-  polyState.counts = counts;
-  /* 놓인 피스 키 재배정 */
-  for (const p of polyState.placements) p.key = keyForShape(after, p.cells, symOpts(), p.key.replace(/:[ab]$/, ''));
-  for (const p of polyState.placements) { if (!polyState.counts[p.key] && remaining(p.key) <= 0) polyState.counts[p.key] = (polyState.counts[p.key] as number || 0) + 1; }
-  polyState.trayOrient = {};
-  void before;
-  polySaveState(); polyRender();
-}
+/* 회전·뒤집기 허용: 고른 방향에서 얼마나 돌릴 수 있는지만 바뀐다 (항목·놓인 피스는 그대로) */
+export function setAllowFlip(on: boolean): void { polyState.allowFlip = on; polyState.trayOrient = {}; polySaveState(); polyRender(); }
 export function setAllowRotate(on: boolean): void { polyState.allowRotate = on; polyState.trayOrient = {}; polySaveState(); polyRender(); }
 export function setForbidOverlap(on: boolean): void { polyState.forbidOverlap = on; polySaveState(); polyRender(); }
 export function setCoverLetters(on: boolean): void { polyState.coverLetters = on; polySaveState(); polyRender(); }
@@ -223,7 +245,8 @@ export function setEditMode(mode: EditMode, rerender = true): void {
 export function addCustom(rows: string): number {
   const id = polyState.nextCustomId++;
   polyState.customs.push({ id, rows });
-  polyState.counts['u:' + id] = 1;
+  const p = pieceByKey('u:' + id);
+  if (p) addEntry(p.key, p.shape, 1);
   polySaveState(); polyRender();
   return id;
 }
@@ -231,7 +254,8 @@ export function removeCustom(id: number): void {
   const key = 'u:' + id;
   if (polyState.placements.some(p => p.key === key)) pushUndo();
   polyState.customs = polyState.customs.filter(c => c.id !== id);
-  delete polyState.counts[key];
+  polyState.entries = polyState.entries.filter(e => e.key !== key);
+  delete polyState.pickOrient[key];
   polyState.placements = polyState.placements.filter(p => p.key !== key);
   polySaveState(); polyRender();
 }
@@ -239,7 +263,7 @@ export function removeCustom(id: number): void {
 /** 전체 삭제: 도면·피스·배치 모두 초기화 (옵션은 유지) */
 export function clearAll(): void {
   pushUndo();
-  polyState.holes = []; polyState.letters = {}; polyState.placements = []; polyState.counts = {}; polyState.trayOrient = {};
+  polyState.holes = []; polyState.letters = {}; polyState.placements = []; polyState.entries = []; polyState.trayOrient = {};
   polyUi.selectedId = null;
   polySaveState(); polyRender();
 }

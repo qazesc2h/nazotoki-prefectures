@@ -1,10 +1,10 @@
 /* 폴리오미노 — 피스 카탈로그 (1~6칸 자유 폴리오미노 + 사용자 피스). 순수 모듈.
    표준 이름: 펜토미노 I U P F X N Y L Z T W V, 테트로미노 I O T S L, 트로미노 I L. 헥소미노는 번호. */
-import { normalize, shapeKey, canonicalKey, orientations, flipH, isChiral, isCubeNet, FREE, ONE_SIDED, shapeFromRows } from './model';
+import { normalize, shapeKey, canonicalKey, orientations, isCubeNet, FREE, ONE_SIDED, shapeFromRows } from './model';
 import type { Shape, SymmetryOpts } from './model';
 
 export interface CatalogPiece {
-  key: string;      /* 자유 정규 키(또는 거울상 분리 시 ':a' / ':b' 접미) · 사용자 피스는 'u:<n>' */
+  key: string;      /* 자유 정규 키 · 사용자 피스는 'u:<n>' */
   name: string;     /* 표시 이름 */
   size: number;     /* 칸 수 */
   shape: Shape;     /* 표시·초기 방향 */
@@ -69,18 +69,9 @@ export const BASE_CATALOG: CatalogPiece[] = (() => {
 
 export interface CustomShape { id: number; rows: string; }
 
-/**
- * 현재 옵션에 맞는 카탈로그: 뒤집기를 허용하지 않으면 거울상이 있는 피스를 두 장(':a' 원형 / ':b' 거울상)으로 나눈다.
- * 사용자 피스는 그대로 한 장(허용 여부와 무관, 그린 방향 그대로).
- */
-export function buildCatalog(opts: SymmetryOpts, customs: CustomShape[]): CatalogPiece[] {
-  const out: CatalogPiece[] = [];
-  for (const p of BASE_CATALOG) {
-    if (!opts.allowFlip && isChiral(p.shape)) {
-      out.push({ ...p, key: p.key + ':a', name: p.name });
-      out.push({ ...p, key: p.key + ':b', name: p.name + '′', shape: flipH(p.shape) });
-    } else out.push(p);
-  }
+/** 카탈로그: 자유 폴리오미노(모양 종류) + 사용자 피스. 방향은 피스를 고를 때 정한다(entries.ts) */
+export function buildCatalog(customs: CustomShape[]): CatalogPiece[] {
+  const out: CatalogPiece[] = BASE_CATALOG.slice();
   customs.forEach((c, i) => {
     const shape = shapeFromRows(c.rows);
     if (!shape.length) return;
@@ -92,14 +83,6 @@ export function buildCatalog(opts: SymmetryOpts, customs: CustomShape[]): Catalo
 /** 카탈로그 키 → 피스 (없으면 null) */
 export function findPiece(catalog: CatalogPiece[], key: string): CatalogPiece | null {
   return catalog.find(p => p.key === key) || null;
-}
-
-/** 놓인 변형(cells)이 현재 옵션에서 어느 카탈로그 피스에 해당하는지 (뒤집기 토글 시 ':a'/':b' 재배정용) */
-export function keyForShape(catalog: CatalogPiece[], cells: Shape, opts: SymmetryOpts, prevKey: string): string {
-  if (prevKey.startsWith('u:')) return prevKey;
-  const k = canonicalKey(cells, opts);
-  const hit = catalog.find(p => !p.custom && canonicalKey(p.shape, opts) === k);
-  return hit ? hit.key : prevKey;
 }
 
 /** 피스의 허용 변형 (표시 방향 기준) */
