@@ -3,7 +3,7 @@ import { polyState, polySaveState } from './state';
 import { askConfirm, notify } from '../shared/dialog';
 import { shapeSvg, pieceColor } from './draw';
 import { catalog, bumpCount, toggleInf, setAllOfSize, addCustom, removeCustom, polyRender, isPickerVisible, setCubeNetsOnly } from './actions';
-import { normalize, isConnected, shapeSize } from './model';
+import { normalize, shapeSize } from './model';
 import type { Cell } from './model';
 
 const CARD_PX = 12;
@@ -132,7 +132,6 @@ export function initPicker(): void {
     const cells = [...drawn].map(k => k.split(',').map(Number) as Cell);
     const shape = normalize(cells);
     if (!shape.length) { notify('칸을 하나 이상 칠하세요.'); return; }
-    if (!isConnected(shape)) { notify('칸이 변으로 모두 이어져 있어야 합니다.'); return; }
     const { w, h } = shapeSize(shape);
     const rows: string[] = [];
     for (let y = 0; y < h; y++) { let r = ''; for (let x = 0; x < w; x++) r += shape.some(c => c[0] === x && c[1] === y) ? '#' : '.'; rows.push(r); }
